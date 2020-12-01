@@ -1,0 +1,87 @@
+/*color:阴影颜色，16进制色，rgb色都支持
+   radius：阴影圆角
+   spread：阴影扩散大小或者长度
+   offsetX：水平偏移度
+   offsetY：垂直偏移度*/
+/*-fx-font-style:italic*/
+.label:hover {
+    -fx-effect: dropshadow(three-pass-box, #cccccc, 20.0, 0.6, 0, 0);
+    -fx-background-radius: 2.0em;
+    -fx-cursor: hand;
+}
+.button:hover {
+    -fx-cursor: hand;
+}
+.list-cell {
+    -fx-text-fill: #292e34;
+    -fx-alignment: center;
+    -fx-font-family: "Microsoft YaHei", "MicrosoftJhengHei";
+    -fx-pref-height: 30px;
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+}
+
+.list-cell:selected {
+    -fx-background-color: #b3b5e0;
+}
+
+.text-field {
+    -fx-background-radius: 15 15 15 15;
+}
+
+#leftSide .label {
+    -fx-text-fill: rgb(125, 125, 125);
+}
+
+#leftPane {
+    -fx-background-color: rgb(245, 245, 247);
+}
+
+.tab-pane {
+    -fx-border-color: transparent;
+}
+
+.table-view {
+    -fx-background-color: transparent;
+    -fx-text-fill: rgb(51, 51, 51);
+}
+
+.table-column {
+    -fx-alignment: none;
+}
+
+/*.table-column:hover {
+    -fx-background-color: rgb(235, 236, 237);
+}*/
+
+.table-view .column-header,
+.table-view .column-header .filler,
+.table-view .column-header-background .filler {
+    -fx-background-color: #fff;
+    -fx-border-color: rgb(225, 225, 226) rgb(225, 225, 226) rgb(225, 225, 226) transparent;
+}
+
+#songListBorderPane {
+    -fx-background-color: rgb(250, 250, 250);
+}
+
+.table-view .column-header-background .label {
+    -fx-text-fill: rgb(102, 102, 102);
+    -fx-font-weight: 400;
+    -fx-alignment: NONE;
+}
+
+#searchButton {
+    /*设置背景颜色渐变*/
+    /*-fx-background-color: linear-gradient(to right,#00fffc,#fff600);*/
+    /*-fx-background-color: #bec3db;*/
+    /*设置圆角*/
+     -fx-background-radius: 25;
+     -fx-border-radius: 25;
+}
+
+.simplifyTableView .column-header-background {
+    -fx-max-height: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+}
