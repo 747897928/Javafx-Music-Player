@@ -165,6 +165,37 @@ public class LocalMusicUtils {
         }
     }
 
+
+    /**
+     * 获取嵌入音乐文件内的专辑图片
+     *
+     * @param file   音乐文件file对象
+     * @return a WritableImage object
+     */
+    public static WritableImage getLocalMusicArtwork(File file) {
+        //解析文件
+        AudioFile audioFile = null;
+        try {
+            audioFile = AudioFileIO.read(file);
+        } catch (Exception e) {
+            //Log4jUtils.logger.error("该歌曲无专辑图片", e);
+            return null;
+        }//Log4jUtils.logger.error("", e);
+
+        Tag tag = audioFile.getTag();
+        ;
+        /*获取音乐封面*/
+        try {
+            BufferedImage artwork = tag.getFirstArtwork().getImage();
+            WritableImage writableImage = SwingFXUtils.toFXImage(artwork, null);
+            return writableImage;
+        } catch (Exception e) {
+            //Log4jUtils.logger.error("", e);
+            return null;
+        }
+    }
+
+
     /**
      * 获取嵌入音乐文件内的专辑图片
      *
@@ -187,7 +218,7 @@ public class LocalMusicUtils {
         ;
         /*获取音乐封面*/
         try {
-            BufferedImage artwork = (BufferedImage) tag.getFirstArtwork().getImage();
+            BufferedImage artwork = tag.getFirstArtwork().getImage();
             Graphics2D graphics = (Graphics2D) artwork.getGraphics();
             graphics.scale((width / artwork.getWidth()), (height / artwork.getHeight()));
             graphics.drawImage(artwork, 0, 0, null);

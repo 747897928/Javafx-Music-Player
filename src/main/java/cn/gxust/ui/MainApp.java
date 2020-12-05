@@ -6,6 +6,7 @@ import cn.gxust.cloudutils.FileDownService;
 import cn.gxust.utils.AnimationUtil;
 import com.jfoenix.controls.*;
 import com.jfoenix.svg.SVGGlyph;
+import javafx.animation.*;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
@@ -13,14 +14,13 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -30,6 +30,7 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
+import javafx.scene.shape.Circle;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
@@ -55,7 +56,6 @@ import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Objects;
 
 import static javafx.scene.paint.Color.BLACK;
 
@@ -88,7 +88,11 @@ public class MainApp extends Application {
     private PlayBean currentPlayBean;
     //12.下侧面板的：总时间
     private Label labTotalTime;
-    //13.碟片的ImageView对象
+
+    //13.底部歌曲封面的ImageView对象
+    private ImageView songCoverImageView;
+
+    //14.碟片的ImageView对象
     private ImageView panImageView;
 
     //18.当前播放模式：
@@ -103,11 +107,8 @@ public class MainApp extends Application {
     //21.音量滚动条
     private JFXSlider sldVolume;
 
-    //23.记录静音前的音量
-    private double prevVolumn;
-
-    //24.显示歌词的Listview容器
-    private JFXListView<String> listView;
+    //24.显示歌词的VBox容器
+    private VBox lrcVBox;
 
     //25.存储歌词时间的ArrayList
     private ArrayList<BigDecimal> lrcList;
@@ -142,6 +143,12 @@ public class MainApp extends Application {
 
     private Label songNameLabel;//歌曲名label
 
+    private Label siLab;//歌曲详情页用来显示歌手名的label
+
+    private Label sNLab;//歌曲详情页歌曲名label
+
+    private Label albumLabel; //歌曲详情页专辑名label
+
     private FlowPane flowPane;
 
     private ArrayList<PlayListBean> playListBeanList;
@@ -150,7 +157,7 @@ public class MainApp extends Application {
 
     private ImageView songListCoverImageView;//歌单封面
 
-    private final int PANIMAGVIEWSIZE = 80;//音乐封面Image最大大小
+    private final int PANIMAGVIEWSIZE = 200;//音乐封面Image最大大小
 
     private final int SONGLISTCOVERIMAGEVIEWSIZE = 100;//歌单封面Image最大大小
 
@@ -178,13 +185,31 @@ public class MainApp extends Application {
 
     private MaskerPane maskerPane;
 
+    private JFXDrawer jfxDrawer;
+
+    private Timeline t1;
+
+    private RotateTransition rotateTransition;
+
+    private final Font font = new Font("黑体", 14);
+
+    private final Font boldFont = Font.font("Timer New Roman", FontWeight.BOLD, FontPosture.ITALIC, 14);
+
+    private ImageView rodImageView;
+
+    private java.awt.TrayIcon trayIcon;
+
     @Override
     public void start(Stage primaryStage) throws Exception {
         mainStage = primaryStage;
         Image logoImage = new Image(this.getClass().getResourceAsStream("/images/topandbottom/logo.png"));
         primaryStage.getIcons().add(logoImage);//设置logo
-
         panDefaultImage = new Image("/images/topandbottom/logoDark.png");
+
+        t1 = new Timeline(new KeyFrame(Duration.millis(15), event -> {
+            lrcVBox.setLayoutY(lrcVBox.getLayoutY() - 10);
+        }));
+        t1.setCycleCount(3);//执行3次
         date = new Date();
         cloudMusicSpider = new CloudMusicSpider();
         cloudRequest = new CloudRequest();//网易云请求工具类
@@ -207,8 +232,20 @@ public class MainApp extends Application {
 
         Background background = new Background(new BackgroundFill(Paint.valueOf("#1a3399"), null, null));
         Paint paint = background.getFills().get(0).getFill();
-        mainborderPane.setCenter(getCenterPane(background));
-        mainborderPane.setLeft(getLeftPane());
+        BorderPane bo2 = new BorderPane();
+        bo2.setLeft(getLeftPane());
+        bo2.setCenter(getCenterPane(background));
+        jfxDrawer = new JFXDrawer();
+        jfxDrawer.setDefaultDrawerSize(1080);
+        jfxDrawer.setDirection(JFXDrawer.DrawerDirection.BOTTOM);
+        jfxDrawer.setContent(bo2);
+        HBox h4 = new HBox();
+        h4.getChildren().add(getSidePane());
+        h4.setAlignment(Pos.CENTER);
+        /*h4.getStyleClass().add("bagNode");
+        mainborderPane.getStyleClass().add("bagNode");*/
+        jfxDrawer.setSidePane(h4);
+        mainborderPane.setCenter(jfxDrawer);
 
         BorderPane bottomPane = getBottomPane();
         bottomPane.setBackground(background);
@@ -252,7 +289,17 @@ public class MainApp extends Application {
         //3.将场景设置到舞台
         primaryStage.setScene(scene);
 
-        primaryStage.setOnCloseRequest(event -> System.exit(0));
+        primaryStage.setTitle(appName);
+
+        primaryStage.setOnCloseRequest(event -> {
+            try {
+                if (java.awt.SystemTray.isSupported())
+                    if (trayIcon != null)
+                        java.awt.SystemTray.getSystemTray().remove(trayIcon);
+            } catch (Exception e) {
+            }
+            System.exit(0);
+        });
         //lrcStage.show();
         //显示舞台
         primaryStage.show();
@@ -305,7 +352,7 @@ public class MainApp extends Application {
                 popupMenu.getItem(i).setFont(font);
             }
             if (bufferedImage != null) {
-                java.awt.TrayIcon trayIcon = new java.awt.TrayIcon(bufferedImage, appName);
+                trayIcon = new java.awt.TrayIcon(bufferedImage, appName);
                 trayIcon.setImageAutoSize(true);
                 trayIcon.setToolTip(appName);
                 trayIcon.setPopupMenu(popupMenu);
@@ -316,13 +363,12 @@ public class MainApp extends Application {
 
 
     //创建一个左侧面板
-    private BorderPane getLeftPane() {
+    private Node getLeftPane() {
         VBox localVBox = new VBox(10);
         Label recommendLabGd = new Label("推荐");
         recommendLabGd.setPrefHeight(20);
         recommendLabGd.setTextFill(BLACK);
-        recommendLabGd.setFont(Font.font("Timer New Roman",
-                FontWeight.BOLD, FontPosture.ITALIC, 14));
+        recommendLabGd.setFont(boldFont);
 
         Paint paint = Paint.valueOf("#8a8a8a");
         SVGGlyph paperPlaneSvg = new SVGGlyph("M512.00404775 8C233.6469927 8 8 233.6550882 8 512.00404775s225.6469927 503.99595225 504.00404775 503.99595225 503.99595225-225.6469927 503.99595225-503.99595225S790.3530073 8 512.00404775 8z m-52.71006234 731.10014184V631.8666163l64.80479939 18.66831553z m200.99607314-64.48907292L463.45509308 613.80546622l175.71370064-207.37535864-226.73989111 192.52004231-184.10877549-55.77017709 533.35038094-258.24773264z", paint);
@@ -347,7 +393,16 @@ public class MainApp extends Application {
 
         JFXButton lrcGd = new JFXButton("歌词", lrcSvg);
 
-        lrcGd.setOnAction(mouseEvent -> tabPane.getSelectionModel().select(2));
+        lrcGd.setOnAction(mouseEvent -> {
+            if (jfxDrawer.getDefaultDrawerSize() < mainStage.getHeight()) {
+                jfxDrawer.setDefaultDrawerSize(mainStage.getHeight());
+            }
+            if (jfxDrawer.isClosed()) {
+                jfxDrawer.open();
+            } else {
+                jfxDrawer.close();
+            }
+        });
 
        /* SVGGlyph settingSvg = new SVGGlyph("M512 64c249.6 0 448 198.4 448 448s-198.4 448-448 448-448-198.4-448-448 198.4-448 448-448z m0-64C230.4 0 0 230.4 0 512s230.4 512 512 512 512-230.4 512-512-230.4-512-512-512zM758.4 591.36c-4.48 13.696-9.856 26.88-16.384 39.424 26.432 31.424 25.856 77.888-3.776 107.52a79.36 79.36 0 0 1-107.456 3.712 258.112 258.112 0 0 1-39.424 16.32A79.808 79.808 0 0 1 512 832a79.744 79.744 0 0 1-79.36-73.6 256.256 256.256 0 0 1-39.424-16.384 79.36 79.36 0 0 1-107.52-3.776 79.296 79.296 0 0 1-3.712-107.456 255.36 255.36 0 0 1-16.32-39.424A79.744 79.744 0 0 1 192 512c0-41.984 32.512-76.096 73.6-79.36 4.48-13.696 9.856-26.88 16.384-39.424a79.36 79.36 0 0 1 3.712-107.52 79.36 79.36 0 0 1 107.52-3.712c12.608-6.528 25.728-11.968 39.424-16.384A79.744 79.744 0 0 1 512 192c41.984 0 76.096 32.448 79.36 73.6 13.696 4.48 26.88 9.856 39.424 16.384a79.36 79.36 0 0 1 107.52 3.712 79.36 79.36 0 0 1 3.712 107.52c6.528 12.608 11.904 25.728 16.32 39.424C799.488 435.904 832 470.016 832 512s-32.512 76.096-73.6 79.36z m-65.536-203.648l17.152-17.152a40 40 0 0 0-56.576-56.512l-17.28 17.28a218.752 218.752 0 0 0-84.16-35.328V272a40 40 0 0 0-80 0v24c-30.848 5.76-59.264 18.176-84.16 35.264l-17.28-17.28a40 40 0 0 0-56.576 56.576l17.152 17.152a217.472 217.472 0 0 0-35.456 84.288h-23.68a40 40 0 0 0 0 80h23.68c5.76 30.272 17.792 59.008 35.456 84.288l-17.152 17.152a40 40 0 0 0 56.576 56.512l17.28-17.28a218.88 218.88 0 0 0 84.16 35.328v24a40 40 0 0 0 80 0v-24a218.56 218.56 0 0 0 84.16-35.264l17.28 17.28a40 40 0 0 0 56.576-56.576l-17.152-17.152c17.664-25.28 29.76-54.016 35.456-84.288h23.68a40 40 0 0 0 0-80h-23.68a217.472 217.472 0 0 0-35.456-84.288zM392 512a120 120 0 1 1 240 0 120 120 0 0 1-240 0z m40 0a80 80 0 1 0 160 0 80 80 0 0 0-160 0z", paint);
         settingSvg.setSize(20.0);
@@ -357,8 +412,7 @@ public class MainApp extends Application {
         Label locallabGd = new Label("我的音乐");
         locallabGd.setPrefHeight(20);
         locallabGd.setTextFill(BLACK);
-        locallabGd.setFont(Font.font("Timer New Roman",
-                FontWeight.BOLD, FontPosture.ITALIC, 14));
+        locallabGd.setFont(boldFont);
 
         SVGGlyph musicIco = new SVGGlyph("M592.1792 616.7552a62.4128 53.4528 0 1 0 124.8256 0 62.4128 53.4528 0 1 0-124.8256 0ZM306.9952 652.4416a62.4128 53.4528 0 1 0 124.8256 0 62.4128 53.4528 0 1 0-124.8256 0ZM512 0a512 512 0 1 0 512 512A512 512 0 0 0 512 0z m240.64 616.7552c0 49.0496-43.6736 89.1392-98.048 89.1392S556.544 665.6 556.544 616.7552s43.6736-89.088 98.048-89.088A103.5264 103.5264 0 0 1 716.8 547.84V336.0256a16.0768 16.0768 0 0 0-6.0416-13.4656 17.3056 17.3056 0 0 0-14.2848-4.4544l-213.8624 26.8288a18.2272 18.2272 0 0 0-16.0768 17.8176V421.376l176.4864-23.8592a17.5104 17.5104 0 1 1 4.4544 34.7648l-178.2784 24.064h-2.6624v184.6784a76.3392 76.3392 0 0 1 0.9216 11.4176c0 48.9984-43.6736 89.088-98.048 89.088S271.36 701.44 271.36 652.4416 315.0336 563.2 369.408 563.2a103.6288 103.6288 0 0 1 62.3616 20.48V362.752a54.6304 54.6304 0 0 1 47.2576-53.4528l213.9136-26.7264a58.9824 58.9824 0 0 1 41.8816 13.3632 52.6848 52.6848 0 0 1 17.8176 40.0896z", paint);
         musicIco.setSize(20.0);
@@ -423,54 +477,6 @@ public class MainApp extends Application {
 
 
         localVBox.getChildren().addAll(recommendLabGd, findMusicGd, songListGd, lrcGd, locallabGd, localMuisButton, downMusicButton, dirIcoButton);
-        //总面板
-        BorderPane leftPane = new BorderPane();
-        leftPane.setTop(localVBox);
-
-
-        StackPane stackPane = new StackPane();
-        panImageView = new ImageView(panDefaultImage);
-        panImageView.setFitHeight(PANIMAGVIEWSIZE);
-        panImageView.setFitWidth(PANIMAGVIEWSIZE);
-
-        SVGPath svgPath = new SVGPath();
-        svgPath.setContent("M-45.3,472l5.2-5.2c0.1-0.1,0.2-0.1,0.3,0l1,1c0.1,0.1,0.1,0.2,0,0.3l-5.2,5.2h3.8c0.2,0,0.4,0.2,0.4,0.4v1.2c0,0.1-0.1,0.2-0.2,0.2h-6.3c-0.4,0-0.8-0.4-0.8-0.8V468c0-0.1,0.1-0.2,0.2-0.2h1.2c0.2,0,0.4,0.2,0.4,0.4V472z M-28.7,458l-5.2,5.2c-0.1,0.1-0.2,0.1-0.3,0c0,0,0,0,0,0l-1-1c-0.1-0.1-0.1-0.2,0-0.3c0,0,0,0,0,0l5.2-5.2h-3.8c-0.2,0-0.4-0.2-0.4-0.4v-1.2c0-0.1,0.1-0.2,0.2-0.2h6.3c0.4,0,0.8,0.4,0.8,0.8v6.3c0,0.1-0.1,0.2-0.2,0.2h-1.2c-0.2,0-0.4-0.2-0.4-0.4C-28.7,461.8-28.7,458-28.7,458z");
-        svgPath.setFill(Paint.valueOf("#eaeaea"));
-        svgPath.setScaleX(2.0);
-        svgPath.setScaleY(2.0);
-
-        Button button = new Button("", svgPath);
-        button.setOnAction(event -> tabPane.getSelectionModel().select(2));
-        button.setOpacity(0.0);
-        stackPane.setOnMouseEntered(event -> AnimationUtil.fade(button, 0.1, 0, 0, 1));
-        stackPane.setOnMouseExited(event -> AnimationUtil.fade(button, 0.1, 0, 1, 0));
-        button.setPrefSize(PANIMAGVIEWSIZE, PANIMAGVIEWSIZE);
-        button.setStyle("-fx-background-color: rgba(0, 0, 0, 0.3)");
-        stackPane.getChildren().addAll(panImageView, button);
-
-        VBox leftbottomvBox = new VBox(5);
-        singerLabel = new Label("");
-        singerLabel.setTextFill(BLACK);
-        singerLabel.setFont(Font.font("Timer New Roman",
-                FontWeight.BOLD, FontPosture.ITALIC, 12));
-        singerLabel.setPrefWidth(80);
-        songNameLabel = new Label("");
-        songNameLabel.setTextFill(BLACK);
-        songNameLabel.setFont(Font.font("Timer New Roman",
-                FontWeight.BOLD, FontPosture.ITALIC, 12));
-        songNameLabel.setPrefWidth(80);
-        Insets in3 = new Insets(5, 10, 5, 10);
-        VBox.setMargin(songNameLabel, in3);
-        VBox.setMargin(singerLabel, in3);
-        leftbottomvBox.getChildren().addAll(songNameLabel, singerLabel);
-        HBox bottomhbox = new HBox(5);
-        bottomhbox.getChildren().addAll(stackPane, leftbottomvBox);
-
-        bottomhbox.setOnMouseMoved(e -> {
-            //改变鼠标的形状
-            bottomhbox.setCursor(Cursor.OPEN_HAND);
-            //bottomhbox.setCursor(Cursor.CLOSED_HAND);
-        });
         Color rgb144 = Color.rgb(114, 114, 114);
         Border border = new Border(new BorderStroke(
                 rgb144, rgb144, rgb144, rgb144,//四个边的颜色
@@ -481,14 +487,123 @@ public class MainApp extends Application {
                 new CornerRadii(1),
                 new BorderWidths(1),
                 null
-
         ));
-        bottomhbox.setBorder(border);
-        //总面板
-        leftPane.setTop(localVBox);
-        leftPane.setBottom(bottomhbox);
-        leftPane.setBorder(border);
-        return leftPane;
+        localVBox.setBorder(border);
+        localVBox.setPrefWidth(160.0);
+        return localVBox;
+    }
+
+    private Node getSidePane() {
+
+        StackPane s1 = new StackPane();
+        ImageView iv1 = new ImageView("/images/topandbottom/pan.png");
+        iv1.setFitHeight(250);
+        iv1.setFitWidth(250);
+        //4.碟片的图片
+        panImageView = new ImageView("/images/topandbottom/logoDark.png");
+        panImageView.setFitHeight(170);
+        panImageView.setFitWidth(170);
+        Label panLabel = new Label("", panImageView);
+        Circle circle2 = new Circle();
+        circle2.centerXProperty().bind(panLabel.widthProperty().divide(2));
+        circle2.centerYProperty().bind(panLabel.heightProperty().divide(2));
+        circle2.radiusProperty().bind(panLabel.widthProperty().divide(2));
+        panImageView.setClip(circle2);
+        s1.getChildren().addAll(iv1, panLabel);
+        s1.setLayoutX(20);
+        s1.setLayoutY(50);
+
+        rotateTransition = new RotateTransition(Duration.seconds(60), panImageView);
+        rotateTransition.setFromAngle(0);
+        rotateTransition.setToAngle(360);
+        // 无限循环
+        rotateTransition.setCycleCount(Timeline.INDEFINITE);
+        // 每次旋转后是否改变旋转方向
+        rotateTransition.setAutoReverse(false);
+        // RotateTransition旋转方式两轮旋转间有间隔
+
+        rodImageView = new ImageView("/images/topandbottom/rodImageView.png");
+        Circle circle1 = new Circle();
+        circle1.setCenterX(125);
+        circle1.setCenterY(125);
+        circle1.setRadius(125);//圆的半径
+
+        rodImageView.setClip(circle1);
+
+        sNLab = new Label();
+        sNLab.setLayoutX(300.0);
+        sNLab.setLayoutY(35.0);
+        sNLab.setPrefWidth(160.0);
+        sNLab.setFont(new Font("黑体", 18));
+
+        siLab = new Label("歌手");
+        siLab.setLayoutX(480);
+        siLab.setLayoutY(70);
+        siLab.setPrefWidth(140.0);
+
+        albumLabel = new Label("专辑：");
+        albumLabel.setLayoutX(300);
+        albumLabel.setLayoutY(70);
+        albumLabel.setPrefWidth(140.0);
+
+        //5.歌词的VBox容器
+        lrcVBox = new VBox(15);
+        lrcVBox.setPadding(new Insets(10, 10, 10, 10));
+        lrcVBox.setLayoutX(0);
+        lrcVBox.setLayoutY(40);
+
+        SVGGlyph svgGlyph = new SVGGlyph("M-45.3,472l5.2-5.2c0.1-0.1,0.2-0.1,0.3,0l1,1c0.1,0.1,0.1,0.2,0,0.3l-5.2,5.2h3.8c0.2,0,0.4,0.2,0.4,0.4v1.2c0,0.1-0.1,0.2-0.2,0.2h-6.3c-0.4,0-0.8-0.4-0.8-0.8V468c0-0.1,0.1-0.2,0.2-0.2h1.2c0.2,0,0.4,0.2,0.4,0.4V472z M-28.7,458l-5.2,5.2c-0.1,0.1-0.2,0.1-0.3,0c0,0,0,0,0,0l-1-1c-0.1-0.1-0.1-0.2,0-0.3c0,0,0,0,0,0l5.2-5.2h-3.8c-0.2,0-0.4-0.2-0.4-0.4v-1.2c0-0.1,0.1-0.2,0.2-0.2h6.3c0.4,0,0.8,0.4,0.8,0.8v6.3c0,0.1-0.1,0.2-0.2,0.2h-1.2c-0.2,0-0.4-0.2-0.4-0.4C-28.7,461.8-28.7,458-28.7,458z", BLACK);
+        svgGlyph.setSize(20.0);
+
+        JFXButton button = new JFXButton("", svgGlyph);
+        button.setOnAction(event -> {
+            if (jfxDrawer.getDefaultDrawerSize() < mainStage.getHeight()) {
+                jfxDrawer.setDefaultDrawerSize(mainStage.getHeight());
+            }
+            if (jfxDrawer.isClosed()) {
+                jfxDrawer.open();
+            } else {
+                jfxDrawer.close();
+            }
+        });
+
+        button.setLayoutX(640);
+        button.setLayoutY(20);
+        Paint paint = Paint.valueOf("#eae3e3");
+        Border border = new Border(new BorderStroke(
+                paint, paint, paint, paint,/*四个边的颜色*/
+                BorderStrokeStyle.SOLID,/*四个边的线型--实线*/
+                BorderStrokeStyle.SOLID,
+                BorderStrokeStyle.SOLID,
+                BorderStrokeStyle.SOLID,
+                new CornerRadii(1),
+                new BorderWidths(1),
+                new Insets(1, 1, 1, 1)
+        ));
+        button.setBorder(border);
+        //AnchorPane
+        AnchorPane anchorPane = new AnchorPane();
+
+        AnchorPane an1 = new AnchorPane();
+        ScrollPane scrollPane = new ScrollPane();
+        //不显示水平和竖直的滚动条滑块
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        //设置间距
+        scrollPane.setPadding(new Insets(0, 0, 0, 0));
+        scrollPane.setContent(an1);
+        scrollPane.setPrefWidth(400);
+        scrollPane.setPrefHeight(400);
+        scrollPane.setMouseTransparent(true);//使ScrollPane不接收鼠标事件
+        //将anchorPane的长和宽绑定scrollPane的长和宽
+        an1.prefWidthProperty().bind(scrollPane.widthProperty());
+        an1.prefHeightProperty().bind(scrollPane.heightProperty());
+        an1.getChildren().add(lrcVBox);
+        scrollPane.setLayoutX(300);
+        scrollPane.setLayoutY(100);
+        anchorPane.getChildren().addAll(button, s1, rodImageView, scrollPane, sNLab, siLab, albumLabel);
+        return anchorPane;
     }
 
     //创建一个中间的面板
@@ -496,8 +611,7 @@ public class MainApp extends Application {
         //2.歌单：标签
         Label lab1 = new Label("歌单：");
         lab1.setTextFill(BLACK);
-        lab1.setFont(Font.font("Timer New Roman",
-                FontWeight.BOLD, FontPosture.ITALIC, 14));
+        lab1.setFont(boldFont);
         Paint paint = background.getFills().get(0).getFill();
         lab1.setBorder(new Border(new BorderStroke(
                 paint, paint, paint, paint,/*四个边的颜色*/
@@ -520,8 +634,7 @@ public class MainApp extends Application {
         labGroupName.setLayoutX(270);
         labGroupName.setLayoutY(14);
         labGroupName.setTextFill(BLACK);
-        labGroupName.setFont(Font.font("Timer New Roman",
-                FontWeight.BOLD, FontPosture.ITALIC, 14));
+        labGroupName.setFont(boldFont);
         labGroupName.setPrefWidth(250);
         labGroupName.setPrefHeight(25);
         labGroupName.setAlignment(Pos.CENTER_LEFT);
@@ -533,13 +646,6 @@ public class MainApp extends Application {
 
         songListCoverImageView.setLayoutX(30);
         songListCoverImageView.setLayoutY(14);
-
-        //5.歌词的listview容器
-        listView = new JFXListView();
-        listView.getItems().addAll(FXCollections.observableArrayList("暂无歌词"));
-        listView.depthProperty().set(4);
-        listView.setEditable(true);
-        listView.setExpanded(true);
 
         Color color1 = Color.rgb(114, 114, 114);
 
@@ -553,7 +659,6 @@ public class MainApp extends Application {
                 new BorderWidths(1),
                 new Insets(1, 1, 1, 1)
         ));
-        listView.setBorder(border);
 
         //6.歌单列表标签
         Label lab3 = new Label("歌单列表");
@@ -566,8 +671,9 @@ public class MainApp extends Application {
         lab3.setLayoutY(140);
 
 
-        TextField filterTextField = new TextField();
+        JFXTextField filterTextField = new JFXTextField();
         filterTextField.setPromptText("搜索表格中的音乐");
+        filterTextField.setLabelFloat(true);
 
         filterTextField.setLayoutX(340);
         filterTextField.setLayoutY(140);
@@ -586,9 +692,9 @@ public class MainApp extends Application {
                 selectionModel.clearSelection();
                 for (int i = 0; i < list.size(); i++) {
                     PlayBean playBean = list.get(i);
-                    if (Objects.requireNonNullElse(playBean.getMusicName(), "").toLowerCase().contains(text) ||
-                            Objects.requireNonNullElse(playBean.getArtistName(), "").toLowerCase().contains(text) ||
-                            Objects.requireNonNullElse(playBean.getAlbum(), "").toLowerCase().contains(text)) {
+                    if (requireNonNullElse(playBean.getMusicName(), "").toLowerCase().contains(text) ||
+                            requireNonNullElse(playBean.getArtistName(), "").toLowerCase().contains(text) ||
+                            requireNonNullElse(playBean.getAlbum(), "").toLowerCase().contains(text)) {
                         //System.out.println(playBean);
                         selectionModel.select(i);
                         tableView.scrollTo(i);
@@ -699,7 +805,7 @@ public class MainApp extends Application {
         flowPane.setBorder(border);
 
         VBox vBox = new VBox(5);
-        int playListBeanListSize = 15;
+        int playListBeanListSize = 18;
         playListBeanList = new ArrayList<>(playListBeanListSize);
 
         for (int k = 0; k < playListBeanListSize; k++) {
@@ -753,15 +859,17 @@ public class MainApp extends Application {
         Tab findMusicTab = new Tab("发现音乐", vBox);
         Tab songListTab = new Tab("歌单", songListBorderPane);
 
-        Tab lrcTab = new Tab("歌词", listView);
-
         tabPane = new JFXTabPane();
-        tabPane.getTabs().addAll(findMusicTab, songListTab, lrcTab);
+        tabPane.getTabs().addAll(findMusicTab, songListTab);
         /*tabPane.setTabMinHeight(-10);//隐藏TabBar
         tabPane.setTabMaxHeight(-10);*/
         //tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tableView.prefHeightProperty().bind(songListBorderPane.prefHeightProperty());
         return tabPane;
+    }
+
+    public <T> T requireNonNullElse(T obj, T defaultObj) {
+        return (obj != null) ? obj : defaultObj;
     }
 
     private void searchSongList(PlayListBean playListBean) {
@@ -902,6 +1010,11 @@ public class MainApp extends Application {
         labTotalTime.setText("00:00");
         songNameLabel.setText(currentPlayBean.getMusicName());
         singerLabel.setText(currentPlayBean.getArtistName());
+
+        sNLab.setText(currentPlayBean.getMusicName());
+        siLab.setText("歌手：" + currentPlayBean.getArtistName());
+        albumLabel.setText("专辑：" + currentPlayBean.getArtistName());
+
         simplifyModelStage.setSongNameAndSingerName(
                 currentPlayBean.getMusicName(),
                 currentPlayBean.getArtistName()
@@ -916,6 +1029,7 @@ public class MainApp extends Application {
             mp3Url = cloudRequest.getReal(mp3Url);
             currentPlayBean.setMp3Url(mp3Url);
         }
+        rotateTransition.stop();
         mediaPlayer = new MediaPlayer(new Media(mp3Url));
 
         //System.out.println(mp3Url);
@@ -938,8 +1052,9 @@ public class MainApp extends Application {
         if (currentPlayBean.isLocalMusic()) {
             try {
                 File file = new File(new URI(mp3Url));
-                WritableImage writableImage = LocalMusicUtils.getLocalMusicArtwork(file, PANIMAGVIEWSIZE, PANIMAGVIEWSIZE);
-                panImageView.setImage(Objects.requireNonNullElse(writableImage, panDefaultImage));
+                WritableImage writableImage = LocalMusicUtils.getLocalMusicArtwork(file);
+                songCoverImageView.setImage(requireNonNullElse(writableImage, panDefaultImage));
+                panImageView.setImage(songCoverImageView.getImage());
             } catch (Exception e) {
                 Log4jUtils.logger.error("", e);
             }
@@ -948,23 +1063,24 @@ public class MainApp extends Application {
             /*歌单音乐将不设置图片，待最后获取到完整的音乐信息才设置*/
             if (!isSongListMusic) {
                 try {
-                    panImageView.setImage(new Image(currentPlayBean.getImageUrl(), PANIMAGVIEWSIZE, PANIMAGVIEWSIZE, false, false, true));
+                    songCoverImageView.setImage(new Image(currentPlayBean.getImageUrl(), PANIMAGVIEWSIZE, PANIMAGVIEWSIZE, false, false, true));
                 } catch (Exception e) {
-                    panImageView.setImage(panDefaultImage);
+                    songCoverImageView.setImage(panDefaultImage);
                 }
+                panImageView.setImage(songCoverImageView.getImage());
             }
         }
         if (!isSongListMusic) {
-            if (panImageView.getImage() != null) {
-                simplifyModelStage.setImage(panImageView.getImage());
+            if (songCoverImageView.getImage() != null) {
+                simplifyModelStage.setImage(songCoverImageView.getImage());
             }
         }
         //资源全部载入播放器后，这时候可以获取到总时间
         mediaPlayer.setOnReady(() -> {
-            int total_second = (int) Math.floor(mediaPlayer.getTotalDuration().toSeconds());
-            date.setTime(total_second * 1000);
+            double total_second = Math.floor(mediaPlayer.getTotalDuration().toSeconds());
+            date.setTime((long) (total_second * 1000));
             labTotalTime.setText(simpleDateFormat.format(date));
-            if (total_second != 0) {
+            if (total_second != 0.0) {
                 sliderSong.setMax(total_second);
             }
         });
@@ -978,7 +1094,7 @@ public class MainApp extends Application {
         playSvg.changeSvgPath(PlayStatus.PAUSE);
         lrcStage.changeSvgPath(PlayStatus.PAUSE);
         simplifyModelStage.changeSvgPath(PlayStatus.PAUSE);
-        mediaPlayer.setVolume(sldVolume.getValue());
+        mediaPlayer.setVolume(sldVolume.getValue() / 100.0);
         mediaPlayer.setOnEndOfMedia(valueRunnable);
         if (isSongListMusic) {
             new Thread(() -> {
@@ -990,17 +1106,29 @@ public class MainApp extends Application {
                             currentPlayBean.getMusicName(),
                             currentPlayBean.getArtistName()
                     );
+                    sNLab.setText(currentPlayBean.getMusicName());
+                    siLab.setText("歌手：" + currentPlayBean.getArtistName());
+                    albumLabel.setText("专辑：" + currentPlayBean.getArtistName());
                     try {
-                        panImageView.setImage(new Image(currentPlayBean.getImageUrl(), PANIMAGVIEWSIZE, PANIMAGVIEWSIZE, false, false, true));
+                        songCoverImageView.setImage(new Image(currentPlayBean.getImageUrl(), PANIMAGVIEWSIZE, PANIMAGVIEWSIZE, false, false, true));
                     } catch (Exception e) {
-                        panImageView.setImage(panDefaultImage);
+                        songCoverImageView.setImage(panDefaultImage);
                     }
-                    if (panImageView.getImage() != null) {
-                        simplifyModelStage.setImage(panImageView.getImage());
+                    if (songCoverImageView.getImage() != null) {
+                        simplifyModelStage.setImage(songCoverImageView.getImage());
                     }
+                    panImageView.setImage(songCoverImageView.getImage());
                     tableView.refresh();
                 });
             }).start();
+        }
+        RotateTransition rt = new RotateTransition(Duration.millis(200), rodImageView);
+        rt.setFromAngle(0);
+        rt.setToAngle(35);
+        rt.setCycleCount(1);
+        rt.play();
+        if (rotateTransition.getStatus() != Animation.Status.RUNNING) {
+            rotateTransition.play();
         }
         //System.gc();
     }
@@ -1010,9 +1138,10 @@ public class MainApp extends Application {
         if (currentPlayBean.getMusicName() == null || currentPlayBean.getMusicName().equals("")) {
             return;
         }
-        //初始化listview
-        ObservableList observableList = this.listView.getItems();
-        observableList.clear();
+        //初始化lrcvbox
+        //初始化lrcVBox
+        this.lrcVBox.getChildren().clear();
+        this.lrcVBox.setLayoutY(40);
         this.lrcList.clear();
         this.currentLrcIndex = 0;
         String musicId = currentPlayBean.getMusicId();
@@ -1043,15 +1172,21 @@ public class MainApp extends Application {
                 //换算为总的毫秒
                 totalMilli = new BigDecimal(intMinute * 60).add(new BigDecimal(strSecond)).multiply(new BigDecimal("1000"));
             } catch (NumberFormatException e) {
-                Log4jUtils.logger.error("", e);
+                System.err.println(e);
                 totalMilli = new BigDecimal(0);
             }
             this.lrcList.add(totalMilli);
-            observableList.add(row.trim().substring(row.indexOf("]") + 1));
-        }
-        if (observableList.size() != 0) {
-            this.listView.getSelectionModel().select(0);
-            this.listView.scrollTo(currentLrcIndex);
+            //创建歌词Label
+            Label lab = new Label(row.trim().substring(row.indexOf("]") + 1));
+            lab.setFont(font);
+            //lab.setAlignment(Pos.CENTER);
+
+            //判断是否是第一个歌词，如果是粗体
+            if (this.lrcVBox.getChildren().size() == 0) {
+                lrcStageLabel.setText(lab.getText());
+            }
+            //将歌词Label添加到lrcVBox中
+            this.lrcVBox.getChildren().add(lab);
         }
     }
 
@@ -1093,11 +1228,27 @@ public class MainApp extends Application {
                 //设置播放按钮图标为：播放
                 playSvg.changeSvgPath(PlayStatus.PLAY);
                 lrcStage.changeSvgPath(PlayStatus.PLAY);
+                RotateTransition rt = new RotateTransition(Duration.millis(200), rodImageView);
+                rt.setFromAngle(35);
+                rt.setToAngle(0);
+                rt.setCycleCount(1);
+                rt.play();
+                if (rotateTransition.getStatus() == Animation.Status.RUNNING) {
+                    rotateTransition.pause();
+                }
                 simplifyModelStage.changeSvgPath(PlayStatus.PLAY);
             } else if (this.mediaPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
                 this.mediaPlayer.play();
                 playSvg.changeSvgPath(PlayStatus.PAUSE);
                 lrcStage.changeSvgPath(PlayStatus.PAUSE);
+                RotateTransition rt = new RotateTransition(Duration.millis(200), rodImageView);
+                rt.setFromAngle(0);
+                rt.setToAngle(35);
+                rt.setCycleCount(1);
+                rt.play();
+                if (rotateTransition.getStatus() != Animation.Status.RUNNING) {
+                    rotateTransition.play();
+                }
                 simplifyModelStage.changeSvgPath(PlayStatus.PAUSE);
             }
         }
@@ -1133,6 +1284,76 @@ public class MainApp extends Application {
 
     //获取下侧面板
     private BorderPane getBottomPane() {
+
+        StackPane stackPane = new StackPane();
+        songCoverImageView = new ImageView(panDefaultImage);
+        songCoverImageView.setFitHeight(50);
+        songCoverImageView.setFitWidth(50);
+
+        SVGPath svgPath = new SVGPath();
+        svgPath.setContent("M-45.3,472l5.2-5.2c0.1-0.1,0.2-0.1,0.3,0l1,1c0.1,0.1,0.1,0.2,0,0.3l-5.2,5.2h3.8c0.2,0,0.4,0.2,0.4,0.4v1.2c0,0.1-0.1,0.2-0.2,0.2h-6.3c-0.4,0-0.8-0.4-0.8-0.8V468c0-0.1,0.1-0.2,0.2-0.2h1.2c0.2,0,0.4,0.2,0.4,0.4V472z M-28.7,458l-5.2,5.2c-0.1,0.1-0.2,0.1-0.3,0c0,0,0,0,0,0l-1-1c-0.1-0.1-0.1-0.2,0-0.3c0,0,0,0,0,0l5.2-5.2h-3.8c-0.2,0-0.4-0.2-0.4-0.4v-1.2c0-0.1,0.1-0.2,0.2-0.2h6.3c0.4,0,0.8,0.4,0.8,0.8v6.3c0,0.1-0.1,0.2-0.2,0.2h-1.2c-0.2,0-0.4-0.2-0.4-0.4C-28.7,461.8-28.7,458-28.7,458z");
+        svgPath.setFill(Paint.valueOf("#eaeaea"));
+        svgPath.setScaleX(2.0);
+        svgPath.setScaleY(2.0);
+
+        JFXButton button = new JFXButton("", svgPath);
+        button.setOnAction(event -> {
+            if (jfxDrawer.getDefaultDrawerSize() < mainStage.getHeight()) {
+                jfxDrawer.setDefaultDrawerSize(mainStage.getHeight());
+            }
+            if (jfxDrawer.isClosed()) {
+                jfxDrawer.open();
+            } else {
+                jfxDrawer.close();
+            }
+        });
+        button.setRipplerFill(Color.WHEAT);
+        button.setOpacity(0.0);
+        stackPane.setOnMouseEntered(event -> AnimationUtil.fade(button, 0.1, 0, 0, 1));
+        stackPane.setOnMouseExited(event -> AnimationUtil.fade(button, 0.1, 0, 1, 0));
+        button.setPrefSize(50, 50);
+        button.setStyle("-fx-background-color: rgba(0, 0, 0, 0.3)");
+        stackPane.getChildren().addAll(songCoverImageView, button);
+
+        VBox leftbottomvBox = new VBox(5);
+        singerLabel = new Label("");
+        singerLabel.setTextFill(Color.WHITE);
+        singerLabel.setFont(Font.font("Timer New Roman",
+                FontWeight.BOLD, FontPosture.ITALIC, 12));
+        singerLabel.setPrefWidth(80);
+        songNameLabel = new Label("");
+        songNameLabel.setTextFill(Color.WHITE);
+        songNameLabel.setFont(Font.font("Timer New Roman",
+                FontWeight.BOLD, FontPosture.ITALIC, 12));
+        songNameLabel.setPrefWidth(80);
+        Insets in3 = new Insets(5, 10, 5, 10);
+        VBox.setMargin(songNameLabel, in3);
+        VBox.setMargin(singerLabel, in3);
+        leftbottomvBox.getChildren().addAll(songNameLabel, singerLabel);
+        HBox bottomhbox = new HBox(5);
+        bottomhbox.getChildren().addAll(stackPane, leftbottomvBox);
+
+        bottomhbox.setOnMouseMoved(e -> {
+            //改变鼠标的形状
+            bottomhbox.setCursor(Cursor.OPEN_HAND);
+            //bottomhbox.setCursor(Cursor.CLOSED_HAND);
+        });
+        Color rgb144 = Color.rgb(114, 114, 114);
+        Border border = new Border(new BorderStroke(
+                rgb144, rgb144, rgb144, rgb144,//四个边的颜色
+                BorderStrokeStyle.SOLID,//四个边的线型--实线
+                BorderStrokeStyle.SOLID,
+                BorderStrokeStyle.SOLID,
+                BorderStrokeStyle.SOLID,
+                new CornerRadii(1),
+                new BorderWidths(1),
+                null
+
+        ));
+        bottomhbox.setBorder(border);
+
+
+        //*************************中间滚动条部分**********************************//
         //1.上一首
         playSvg = new PlaySvg();
         Paint playPaint = Paint.valueOf("#ffffff");
@@ -1156,23 +1377,39 @@ public class MainApp extends Application {
             this.nextMusic();
         });
 
-        HBox hBox1 = new HBox(8);
-        //hBox1.setPrefWidth(130);
-        hBox1.setPadding(new Insets(2, 5, 2, 5));
-        hBox1.getChildren().addAll(button1, button2, button3);
+        //4.播放模式图片
+        playModeSvg = new PlayModeSvg();
+        Region playModeRegion = playModeSvg.getPlayModeRegion(25.0, playPaint);
+        JFXButton button6 = new JFXButton("", playModeRegion);
+        button6.setOnAction(e -> {
+            //此处只处理playMode，实现，放在播放的事件中
+            this.playMode++;
+            if (this.playMode > 3) {
+                this.playMode = 1;
+            }
+            playModeSvg.changeSvgPath(this.playMode);
+        });
+        //5.歌词svg
+        SVGGlyph r7 = new SVGGlyph("M457.635835 437.766298c7.735172-0.354064 16.101723-0.717338 25.093515-1.079588 8.997931-0.355087 18.986423-0.534166 29.687136-0.534166l39.20593 0c14.483876 0 27.448142 0.091074 38.525432 0.26913 10.873652 0.184195 20.815071 0.455371 29.540803 0.805342 8.801457 0.36225 16.995069 0.812505 24.356734 1.338485 7.375991 0.525979 15.118326 1.14201 23.671119 1.882883l8.978489 0.776689 0-53.18327-8.986675 0.786922c-7.883551 0.689708-15.844873 1.323135-23.662933 1.88186-7.617491 0.544399-15.810081 0.994654-24.354688 1.338485-8.728802 0.358157-18.756179 0.629333-29.810956 0.805342-10.887978 0.181125-23.75503 0.26913-39.337937 0.26913-15.216563 0-27.818579-0.088004-38.531572-0.26913-10.877745-0.176009-20.815071-0.447185-29.543873-0.805342-8.526187-0.342808-16.813944-0.793062-24.633027-1.338485-7.92346-0.552585-15.777335-1.183965-23.343661-1.877767l-9.020444-0.826831 0 52.175313 9.012258-0.816598C442.250426 438.659645 450.043926 438.122409 457.635835 437.766298zM322.402851 314.39241c5.222955 6.445806 10.1645 13.152555 14.684444 19.925818 4.603855 6.913457 9.270131 14.272052 13.862729 21.861914 4.637624 7.684006 9.662057 16.567327 14.934131 26.402323l3.928472 7.329942 45.704948-24.857131-4.437056-7.394411c-6.4192-10.69969-12.279674-20.22053-17.422811-28.310789-5.16565-8.102538-10.483772-15.752776-15.814174-22.747073-5.281283-6.910387-10.93505-13.861706-16.811898-20.669762-6.216585-7.181563-12.958126-14.925944-20.037359-23.016203l-5.066389-5.789866L298.574143 285.352003l5.489014 6.65456C311.537386 301.06794 317.366138 308.181965 322.402851 314.39241zM646.220934 675.172313l-1.537006-9.575076c-1.393743-8.691963-2.27174-16.575514-2.609431-23.441898-0.352017-6.968715-0.529049-15.198144-0.529049-24.460088L641.545448 514.950192c0-7.987928 0.084934-13.603833 0.260943-17.187451 0.160659-3.414773 0.573051-6.956436 1.225921-10.525728l1.783623-9.753131-9.914814 0c-7.18361 0-13.729699 0.092098-19.47147 0.275269-5.585205 0.185218-11.338233 0.36225-17.288758 0.540306-5.742794 0.179079-12.114922 0.26606-19.479657 0.26606l-74.086345 0c-6.553253 0-12.837376-0.089028-18.688641-0.267083-6.039553-0.174985-12.899798-0.446162-20.391423-0.805342l-10.378371-0.49835 1.848091 10.224876c0.698918 3.872191 1.313925 7.907087 1.824555 11.992125 0.496304 3.967358 0.747014 9.261944 0.747014 15.738449L459.536115 626.348328c0 5.248537-0.095167 10.213619-0.283456 14.848173-5.609765-6.426363-9.686616-14.317077-12.124132-23.464411l-3.955078-14.846126-10.209526 11.481496c-11.416004 12.837376-21.856797 23.998577-31.032784 33.174564-4.377704 4.378727-8.696056 8.53335-12.927427 12.444427L389.003711 501.971599c0-11.842723 0.795109-23.945365 2.363837-35.973306 1.505283-11.536754 3.53757-20.082384 6.040576-25.39539l6.222725-13.20986-14.528901 1.463328c-6.943133 0.698918-16.167215 1.325182-27.415396 1.860371-11.165294 0.532119-22.585391 0.801249-33.945113 0.801249-15.994276 0-28.563546-0.267083-37.358863-0.796132-8.905834-0.534166-16.386202-1.156336-22.233374-1.850138l-9.239432-1.095961 0 58.114582 10.535961-3.00852c9.612938-2.745531 20.454868-4.841262 32.220842-6.227842 10.149151-1.189082 23.025413-1.879813 38.359656-2.058892l0 186.362478c0 12.403494-1.685385 23.922852-5.008061 34.231639-3.164063 9.794064-7.891737 17.729803-14.053064 23.589254l-8.083096 7.68503 9.705036 5.497201c9.866718 5.588275 18.73162 13.121855 26.348088 22.38994l6.684236 8.133238 6.315846-8.422833c3.302209-4.40431 6.102998-8.079002 8.569166-11.247158 2.396583-3.087315 5.004991-6.217608 7.761778-9.31311 2.868327-3.228531 5.922896-6.644327 9.159614-10.235109 3.053546-3.39533 6.873548-7.214309 11.355629-11.349489l59.614749-57.482179c-0.51063 5.955642-1.197268 12.527314-2.045589 19.599384l-1.110287 9.250688 53.81465 0 0-42.720987 83.509972 0 0 34.609239L646.220934 675.172313zM509.056971 600.777953l0-81.346703 83.509972 0 0 81.346703L509.056971 600.777953zM705.169511 296.332079c-9.907651 0.36225-20.348444 0.725524-31.336706 1.079588-10.761088 0.356111-22.86066 0.536212-35.957957 0.536212L542.970362 297.947879c-14.009062 0-26.654057-0.180102-37.592177-0.537236-10.82044-0.342808-21.306258-0.795109-31.16786-1.342578-9.94449-0.552585-19.716041-1.186012-29.043477-1.882883l-8.882298-0.664126 0 52.766784 14.038738-0.735757c11.514241-0.603751 21.807678-1.143033 30.886451-1.611707 10.140964-0.524956 19.699668-0.88516 28.402887-1.072425 8.668427-0.178055 16.60826-0.356111 23.827685-0.541329 7.214309-0.178055 14.604626-0.268106 21.967314-0.268106l135.578862 0L690.986487 696.107111c0 5.158487-0.574075 9.43386-1.701758 12.687974-0.234337 0.673335-0.948605 2.720971-5.358031 4.548596-2.37407 0.982374-7.05672 2.152013-15.876596 2.153036-1.263783 0-2.573615-0.024559-3.926426-0.071631-9.886161-0.348947-23.636327-1.952468-40.869826-4.76349l-18.391882-3.001357 10.120498 15.648398c3.345188 5.17179 5.398964 9.79304 6.102998 13.721513 0.851391 4.796236 1.638313 11.113105 2.341325 18.774599l0.687662 7.512091 7.543813 0c22.586414 0 41.056068-0.934279 54.901401-2.775206 14.877849-1.990331 26.16287-5.586229 34.506908-10.999518 8.862855-5.767354 14.83487-13.675464 17.751293-23.5166 2.556219-8.668427 3.852748-19.643386 3.852748-32.620955L742.670613 409.500535c0-15.595186 0.088004-28.55229 0.26913-39.617299 0.185218-11.836583 0.36225-21.458731 0.539282-29.424146 0.171915-8.023744 0.525979-15.117302 1.051959-21.081131 0.527003-5.960759 1.13587-11.021008 1.810229-15.040555l1.721201-10.252505-10.377348 0.633427C725.917044 295.437709 714.978924 295.980062 705.169511 296.332079zM511.99693 63.875796c-247.215428 0-447.629947 200.413496-447.629947 447.629947 0 247.221568 200.413496 447.635063 447.629947 447.635063 247.221568 0 447.635063-200.413496 447.635063-447.635063C959.631994 264.289292 759.218498 63.875796 511.99693 63.875796zM785.110191 784.617981c-35.491329 35.489282-76.801177 63.348794-122.788557 82.800821-47.578622 20.12434-98.155531 30.329772-150.323681 30.329772-52.16815 0-102.739942-10.205433-150.320611-30.329772-45.987381-19.452028-87.298252-47.311539-122.792651-82.800821-35.491329-35.490306-63.349817-76.800153-82.795705-122.787534-20.125363-47.579645-30.329772-98.156554-30.329772-150.324704 0-52.16815 10.204409-102.745059 30.329772-150.320611 19.445888-45.987381 47.305399-87.296205 82.795705-122.792651 35.494399-35.489282 76.80527-63.348794 122.792651-82.800821 47.579645-20.12127 98.152461-30.324656 150.320611-30.324656 52.16815 0 102.745059 10.204409 150.323681 30.324656 45.987381 19.452028 87.298252 47.311539 122.788557 82.800821 35.494399 35.490306 63.348794 76.80527 82.800821 122.792651 20.12434 47.574528 30.328749 98.152461 30.328749 150.320611 0 52.16815-10.204409 102.745059-30.328749 150.324704C848.457962 707.812711 820.599474 749.127675 785.110191 784.617981zM712.23237 332.817038", Paint.valueOf("#ffffff"));
+        r7.setSize(25.0);
+        JFXButton button7 = new JFXButton("", r7);
+        button7.setOnAction(event -> {
+            if (!lrcStage.isShowing()) {
+                lrcStage.show();
+            } else {
+                lrcStage.hide();
+            }
+        });
 
-        //*************************中间滚动条部分**********************************//
+        HBox hBox1 = new HBox(5);
+        hBox1.setAlignment(Pos.CENTER);
+
         //1.已播放的时间：
         labPlayTime = new Label("00:00");
-        labPlayTime.setPrefHeight(40);
-        labPlayTime.setPrefWidth(40);
+        //labPlayTime.setPrefWidth(40);
         labPlayTime.setTextFill(Color.WHITE);
         //2.滚动条
         sliderSong = new JFXSlider();
-        sliderSong.setMinWidth(0);
-        sliderSong.setMinHeight(0);
-        sliderSong.setPrefWidth(350);
-        sliderSong.setPrefHeight(12);
         sliderSong.setValue(0.0D);
 
         //Slider的鼠标抬起事件中
@@ -1192,66 +1429,35 @@ public class MainApp extends Application {
 
         //3.总时间标签
         labTotalTime = new Label("00:00");
-        labTotalTime.setPrefWidth(40);
-        labTotalTime.setPrefHeight(40);
+        //labTotalTime.setPrefWidth(40);
         labTotalTime.setTextFill(Color.WHITE);
-        labTotalTime.setAlignment(Pos.CENTER_RIGHT);
 
-        BorderPane borderPane = new BorderPane();
-        borderPane.setLeft(labPlayTime);
-        borderPane.setCenter(sliderSong);
-        borderPane.setRight(labTotalTime);
-        borderPane.setPrefHeight(30);
-        Insets in1 = new Insets(5, 10, 0, 10);
-        BorderPane.setMargin(labPlayTime, in1);
-        BorderPane.setMargin(labTotalTime, in1);
-        labPlayTime.prefHeightProperty().bind(borderPane.prefHeightProperty());
-        sliderSong.prefHeightProperty().bind(borderPane.prefHeightProperty());
-        labTotalTime.prefHeightProperty().bind(borderPane.prefHeightProperty());
-
-
-        //************************右侧的几个组件************************************//
-
-        voiceSvg = new VoiceSvg();
-        Region voiceRegion = voiceSvg.getVoiceRegion(25.0, playPaint);
-        JFXButton button5 = new JFXButton("", voiceRegion);
-        button5.setOnAction(e -> {
-            if (this.currentPlayBean != null) {
-                //判断当前的音量
-                if (this.mediaPlayer.getVolume() != 0) {//此时有音量
-                    //将当前的音量存储起来
-                    this.prevVolumn = this.mediaPlayer.getVolume();
-                    //设置为：静音
-                    this.mediaPlayer.setVolume(0);
-                    //设置图片
-                    voiceSvg.changeSvgPath(VoiceStatus.VOICE_ZERO);
-                    //设置音量滚动条
-                    this.sldVolume.setValue(0);
-                } else {//此时是静音状态
-                    //恢复原音量
-                    this.mediaPlayer.setVolume(this.prevVolumn);
-                    //恢复图片
-                    voiceSvg.changeSvgPath(VoiceStatus.VOICE_N);
-                    //恢复音量滚动条
-                    this.sldVolume.setValue(this.prevVolumn * 100);
-                }
-            }
-        });
+        HBox hBox2 = new HBox(5);
+        hBox2.getChildren().addAll(labPlayTime, sliderSong, labTotalTime);
+        hBox2.setMaxWidth(Double.MAX_VALUE);
+        sliderSong.setMaxWidth(Double.MAX_VALUE);
+        /*如果HBox里面所有的控件都设置成ALWAYS，那么这些控件需要设置maxWidth="Infinity"，否则会不起作用。*/
+        hBox2.setHgrow(sliderSong, Priority.ALWAYS);
+        Insets insets = new Insets(0, 5, 0, 5);
+        labPlayTime.setPadding(insets);
+        labTotalTime.setPadding(insets);
+        VBox sliderSongVBox = new VBox(5);
+        sliderSongVBox.getChildren().addAll(hBox1, hBox2);
 
         //2.音量滚动条
         sldVolume = new JFXSlider();
         sldVolume.setMax(100);
-        sldVolume.setValue(50);
+        sldVolume.setValue(50.0);
         sldVolume.setMajorTickUnit(1);//每前进一格，增加多少的值
-
-        sldVolume.setMinHeight(0);
-        sldVolume.setPrefWidth(100);
+        sldVolume.setOrientation(Orientation.VERTICAL);
+        sldVolume.setMinHeight(0.0);
+        sldVolume.setPrefWidth(30.0);
 
         //监听进度条的值发生变化时
         sldVolume.valueProperty().addListener((observable, oldValue, newValue) -> {
             double value = sldVolume.getValue();
             if (currentPlayBean != null) {
-                mediaPlayer.setVolume(value);
+                mediaPlayer.setVolume(value / 100.0);
             }
             if (value == 0) {
                 voiceSvg.changeSvgPath(VoiceStatus.VOICE_ZERO);
@@ -1259,41 +1465,19 @@ public class MainApp extends Application {
                 voiceSvg.changeSvgPath(VoiceStatus.VOICE_N);
             }
         });
-
-        //3.播放模式图片
-
-        playModeSvg = new PlayModeSvg();
-        Region playModeRegion = playModeSvg.getPlayModeRegion(25.0, playPaint);
-        JFXButton button6 = new JFXButton("", playModeRegion);
-        button6.setOnAction(e -> {
-            //此处只处理playMode，实现，放在播放的事件中
-            this.playMode++;
-            if (this.playMode > 3) {
-                this.playMode = 1;
-            }
-            playModeSvg.changeSvgPath(this.playMode);
+        JFXPopup jfxPopup = new JFXPopup(sldVolume);
+        voiceSvg = new VoiceSvg();
+        Region voiceRegion = voiceSvg.getVoiceRegion(25.0, playPaint);
+        JFXButton button5 = new JFXButton("", voiceRegion);
+        button5.setOnAction(e -> {
+            jfxPopup.show(button5, JFXPopup.PopupVPosition.BOTTOM, JFXPopup.PopupHPosition.LEFT, 5, -35);
         });
-        //4.歌词svg
-        SVGGlyph r7 = new SVGGlyph("M457.635835 437.766298c7.735172-0.354064 16.101723-0.717338 25.093515-1.079588 8.997931-0.355087 18.986423-0.534166 29.687136-0.534166l39.20593 0c14.483876 0 27.448142 0.091074 38.525432 0.26913 10.873652 0.184195 20.815071 0.455371 29.540803 0.805342 8.801457 0.36225 16.995069 0.812505 24.356734 1.338485 7.375991 0.525979 15.118326 1.14201 23.671119 1.882883l8.978489 0.776689 0-53.18327-8.986675 0.786922c-7.883551 0.689708-15.844873 1.323135-23.662933 1.88186-7.617491 0.544399-15.810081 0.994654-24.354688 1.338485-8.728802 0.358157-18.756179 0.629333-29.810956 0.805342-10.887978 0.181125-23.75503 0.26913-39.337937 0.26913-15.216563 0-27.818579-0.088004-38.531572-0.26913-10.877745-0.176009-20.815071-0.447185-29.543873-0.805342-8.526187-0.342808-16.813944-0.793062-24.633027-1.338485-7.92346-0.552585-15.777335-1.183965-23.343661-1.877767l-9.020444-0.826831 0 52.175313 9.012258-0.816598C442.250426 438.659645 450.043926 438.122409 457.635835 437.766298zM322.402851 314.39241c5.222955 6.445806 10.1645 13.152555 14.684444 19.925818 4.603855 6.913457 9.270131 14.272052 13.862729 21.861914 4.637624 7.684006 9.662057 16.567327 14.934131 26.402323l3.928472 7.329942 45.704948-24.857131-4.437056-7.394411c-6.4192-10.69969-12.279674-20.22053-17.422811-28.310789-5.16565-8.102538-10.483772-15.752776-15.814174-22.747073-5.281283-6.910387-10.93505-13.861706-16.811898-20.669762-6.216585-7.181563-12.958126-14.925944-20.037359-23.016203l-5.066389-5.789866L298.574143 285.352003l5.489014 6.65456C311.537386 301.06794 317.366138 308.181965 322.402851 314.39241zM646.220934 675.172313l-1.537006-9.575076c-1.393743-8.691963-2.27174-16.575514-2.609431-23.441898-0.352017-6.968715-0.529049-15.198144-0.529049-24.460088L641.545448 514.950192c0-7.987928 0.084934-13.603833 0.260943-17.187451 0.160659-3.414773 0.573051-6.956436 1.225921-10.525728l1.783623-9.753131-9.914814 0c-7.18361 0-13.729699 0.092098-19.47147 0.275269-5.585205 0.185218-11.338233 0.36225-17.288758 0.540306-5.742794 0.179079-12.114922 0.26606-19.479657 0.26606l-74.086345 0c-6.553253 0-12.837376-0.089028-18.688641-0.267083-6.039553-0.174985-12.899798-0.446162-20.391423-0.805342l-10.378371-0.49835 1.848091 10.224876c0.698918 3.872191 1.313925 7.907087 1.824555 11.992125 0.496304 3.967358 0.747014 9.261944 0.747014 15.738449L459.536115 626.348328c0 5.248537-0.095167 10.213619-0.283456 14.848173-5.609765-6.426363-9.686616-14.317077-12.124132-23.464411l-3.955078-14.846126-10.209526 11.481496c-11.416004 12.837376-21.856797 23.998577-31.032784 33.174564-4.377704 4.378727-8.696056 8.53335-12.927427 12.444427L389.003711 501.971599c0-11.842723 0.795109-23.945365 2.363837-35.973306 1.505283-11.536754 3.53757-20.082384 6.040576-25.39539l6.222725-13.20986-14.528901 1.463328c-6.943133 0.698918-16.167215 1.325182-27.415396 1.860371-11.165294 0.532119-22.585391 0.801249-33.945113 0.801249-15.994276 0-28.563546-0.267083-37.358863-0.796132-8.905834-0.534166-16.386202-1.156336-22.233374-1.850138l-9.239432-1.095961 0 58.114582 10.535961-3.00852c9.612938-2.745531 20.454868-4.841262 32.220842-6.227842 10.149151-1.189082 23.025413-1.879813 38.359656-2.058892l0 186.362478c0 12.403494-1.685385 23.922852-5.008061 34.231639-3.164063 9.794064-7.891737 17.729803-14.053064 23.589254l-8.083096 7.68503 9.705036 5.497201c9.866718 5.588275 18.73162 13.121855 26.348088 22.38994l6.684236 8.133238 6.315846-8.422833c3.302209-4.40431 6.102998-8.079002 8.569166-11.247158 2.396583-3.087315 5.004991-6.217608 7.761778-9.31311 2.868327-3.228531 5.922896-6.644327 9.159614-10.235109 3.053546-3.39533 6.873548-7.214309 11.355629-11.349489l59.614749-57.482179c-0.51063 5.955642-1.197268 12.527314-2.045589 19.599384l-1.110287 9.250688 53.81465 0 0-42.720987 83.509972 0 0 34.609239L646.220934 675.172313zM509.056971 600.777953l0-81.346703 83.509972 0 0 81.346703L509.056971 600.777953zM705.169511 296.332079c-9.907651 0.36225-20.348444 0.725524-31.336706 1.079588-10.761088 0.356111-22.86066 0.536212-35.957957 0.536212L542.970362 297.947879c-14.009062 0-26.654057-0.180102-37.592177-0.537236-10.82044-0.342808-21.306258-0.795109-31.16786-1.342578-9.94449-0.552585-19.716041-1.186012-29.043477-1.882883l-8.882298-0.664126 0 52.766784 14.038738-0.735757c11.514241-0.603751 21.807678-1.143033 30.886451-1.611707 10.140964-0.524956 19.699668-0.88516 28.402887-1.072425 8.668427-0.178055 16.60826-0.356111 23.827685-0.541329 7.214309-0.178055 14.604626-0.268106 21.967314-0.268106l135.578862 0L690.986487 696.107111c0 5.158487-0.574075 9.43386-1.701758 12.687974-0.234337 0.673335-0.948605 2.720971-5.358031 4.548596-2.37407 0.982374-7.05672 2.152013-15.876596 2.153036-1.263783 0-2.573615-0.024559-3.926426-0.071631-9.886161-0.348947-23.636327-1.952468-40.869826-4.76349l-18.391882-3.001357 10.120498 15.648398c3.345188 5.17179 5.398964 9.79304 6.102998 13.721513 0.851391 4.796236 1.638313 11.113105 2.341325 18.774599l0.687662 7.512091 7.543813 0c22.586414 0 41.056068-0.934279 54.901401-2.775206 14.877849-1.990331 26.16287-5.586229 34.506908-10.999518 8.862855-5.767354 14.83487-13.675464 17.751293-23.5166 2.556219-8.668427 3.852748-19.643386 3.852748-32.620955L742.670613 409.500535c0-15.595186 0.088004-28.55229 0.26913-39.617299 0.185218-11.836583 0.36225-21.458731 0.539282-29.424146 0.171915-8.023744 0.525979-15.117302 1.051959-21.081131 0.527003-5.960759 1.13587-11.021008 1.810229-15.040555l1.721201-10.252505-10.377348 0.633427C725.917044 295.437709 714.978924 295.980062 705.169511 296.332079zM511.99693 63.875796c-247.215428 0-447.629947 200.413496-447.629947 447.629947 0 247.221568 200.413496 447.635063 447.629947 447.635063 247.221568 0 447.635063-200.413496 447.635063-447.635063C959.631994 264.289292 759.218498 63.875796 511.99693 63.875796zM785.110191 784.617981c-35.491329 35.489282-76.801177 63.348794-122.788557 82.800821-47.578622 20.12434-98.155531 30.329772-150.323681 30.329772-52.16815 0-102.739942-10.205433-150.320611-30.329772-45.987381-19.452028-87.298252-47.311539-122.792651-82.800821-35.491329-35.490306-63.349817-76.800153-82.795705-122.787534-20.125363-47.579645-30.329772-98.156554-30.329772-150.324704 0-52.16815 10.204409-102.745059 30.329772-150.320611 19.445888-45.987381 47.305399-87.296205 82.795705-122.792651 35.494399-35.489282 76.80527-63.348794 122.792651-82.800821 47.579645-20.12127 98.152461-30.324656 150.320611-30.324656 52.16815 0 102.745059 10.204409 150.323681 30.324656 45.987381 19.452028 87.298252 47.311539 122.788557 82.800821 35.494399 35.490306 63.348794 76.80527 82.800821 122.792651 20.12434 47.574528 30.328749 98.152461 30.328749 150.320611 0 52.16815-10.204409 102.745059-30.328749 150.324704C848.457962 707.812711 820.599474 749.127675 785.110191 784.617981zM712.23237 332.817038", Paint.valueOf("#ffffff"));
-        r7.setSize(25.0);
-        JFXButton button7 = new JFXButton("", r7);
-        button7.setOnAction(event -> {
-            if (!lrcStage.isShowing()) {
-                lrcStage.show();
-            } else {
-                lrcStage.hide();
-            }
-        });
-
-        HBox hBox = new HBox(5);
-        hBox.setAlignment(Pos.CENTER_LEFT);
-        hBox.getChildren().addAll(button5, sldVolume, button6, button7);
-
+        hBox1.getChildren().addAll(button6, button1, button2, button3, button7, button5);
         //**********************总的BorderPane***********************************//
         BorderPane bottomPane = new BorderPane();
-        bottomPane.setLeft(hBox1);
-        bottomPane.setCenter(borderPane);
-        bottomPane.setRight(hBox);
+        bottomPane.setLeft(bottomhbox);
+        bottomPane.setCenter(sliderSongVBox);
+        bottomPane.setMargin(sliderSongVBox, new Insets(2, 5, 2, 5));
         return bottomPane;
     }
 
@@ -1302,8 +1486,8 @@ public class MainApp extends Application {
         return (observable, oldValue, newValue) -> {
            /* 此方法用于在媒体播放器播放时自动调用，每隔100毫秒调用一次
             1.由于是每秒使滚动条前进一次，获newValue中的"秒"*/
-
             currentSecond = (int) newValue.toSeconds();
+
             //2.设置滚动条，一秒一次
             if (currentSecond == prevSecond + 1) {
                 //设置滚动条
@@ -1339,16 +1523,45 @@ public class MainApp extends Application {
             if (currentLrcIndex < lrcList.size() - 1 &&
                     millis >= lrcList.get(currentLrcIndex + 1).doubleValue()) {
                 currentLrcIndex++;//当前歌词索引的指示器
+                //上移
+                if (t1.getStatus() != Animation.Status.RUNNING) {
+                    t1.play();
+                }
+                //当前歌词变白
+                Label lab_current = (Label) lrcVBox.getChildren().get(currentLrcIndex);
+                lab_current.setFont(boldFont);
+                lrcStageLabel.setText(lab_current.getText());
+                //前一行变小，变为：浅灰
+                Label lab_Pre_1 = (Label) lrcVBox.getChildren().get(currentLrcIndex - 1);
+                if (lab_Pre_1 != null) {
+                    lab_Pre_1.setFont(font);
+                }
+
+                //当前行的后一行，浅灰
+                if (currentLrcIndex + 1 < lrcList.size()) {
+                    Label lab_next_1 = (Label) lrcVBox.getChildren().get(currentLrcIndex + 1);
+                    lab_next_1.setFont(font);
+                }
             } else if (currentLrcIndex > 0 && millis < lrcList.get(currentLrcIndex).doubleValue()) {
                 //拖动播放条，回退了
                 currentLrcIndex--;
-                listView.scrollTo(currentLrcIndex);
+                //歌词VBox的下移
+                lrcVBox.setLayoutY(lrcVBox.getLayoutY() + 30);
+                //当前歌词变黄，字号：16
+                Label lab_current = (Label) lrcVBox.getChildren().get(currentLrcIndex);
+                lab_current.setFont(boldFont);
+                lrcStageLabel.setText(lab_current.getText());
+                //前一行变为：浅灰
+                if (currentLrcIndex - 1 >= 0) {
+                    Label lab = (Label) lrcVBox.getChildren().get(currentLrcIndex - 1);
+                    lab.setFont(font);
+                }
+                //后一行变为白色
+                if (currentLrcIndex + 1 < lrcVBox.getChildren().size()) {
+                    Label lab = (Label) lrcVBox.getChildren().get(currentLrcIndex + 1);
+                    lab.setFont(font);
+                }
             }
-            listView.getSelectionModel().select(currentLrcIndex);
-            if (currentLrcIndex % 12 == 0) {
-                listView.scrollTo(currentLrcIndex);
-            }
-            lrcStageLabel.setText(listView.getItems().get(currentLrcIndex));
         };
     }
 
@@ -1395,9 +1608,9 @@ public class MainApp extends Application {
         };
     }
 
+    /* 将匹配到的非法字符以空替换*//* '/ \ : * ? " < > |'*/
     public String validateFileName(String fileName) {
-        /* '/ \ : * ? " < > |'*/
-        return fileName.replaceAll("[\\/\\\\\\:\\*\\?\\\"\\<\\>\\|]", "");// 将匹配到的非法字符以空替换;
+        return fileName.replaceAll("[\\/\\\\\\:\\*\\?\\\"\\<\\>\\|]", "");
     }
 
     public TabPane getTabPane() {
@@ -1428,8 +1641,8 @@ public class MainApp extends Application {
         return customAudioParameter;
     }
 
-    public ImageView getPanImageView() {
-        return panImageView;
+    public ImageView getSongCoverImageView() {
+        return songCoverImageView;
     }
 
     public CloudRequest getCloudRequest() {

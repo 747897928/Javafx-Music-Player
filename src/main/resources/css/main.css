@@ -25,9 +25,9 @@
     -fx-background-color: #b3b5e0;
 }
 
-.text-field {
+/*.text-field {
     -fx-background-radius: 15 15 15 15;
-}
+}*/
 
 #leftSide .label {
     -fx-text-fill: rgb(125, 125, 125);
@@ -85,3 +85,8 @@
     -fx-pref-height: 0;
     -fx-min-height: 0;
 }
+/*.bagNode{
+    -fx-background-image: url("/images/topandbottom/background.jpg");
+    -fx-background-size: stretch stretch;
+    -fx-background-position: center center;
+}*/

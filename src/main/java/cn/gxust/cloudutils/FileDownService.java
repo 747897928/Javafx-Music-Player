@@ -77,7 +77,7 @@ public class FileDownService extends Service<Number> {
     protected void succeeded() {
         PlayBean currentPlayBean = mainApp.getCurrentPlayBean();
         CloudRequest cloudRequest = mainApp.getCloudRequest();
-        ImageView panImageView = mainApp.getPanImageView();
+        ImageView panImageView = mainApp.getSongCoverImageView();
         try {
             BufferedImage bufferedImage = SwingFXUtils.fromFXImage(panImageView.getImage(), null);
             LocalMusicUtils.setMusicInf(currentPlayBean, savepath, bufferedImage);//设置MP3的头文件信息
