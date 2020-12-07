@@ -107,8 +107,8 @@ public class MainApp extends Application {
     //21.音量滚动条
     private JFXSlider sldVolume;
 
-    //24.显示歌词的VBox容器
-    private VBox lrcVBox;
+    //24.显示歌词的Listview容器
+    private JFXListView<String> lrcListView;
 
     //25.存储歌词时间的ArrayList
     private ArrayList<BigDecimal> lrcList;
@@ -187,13 +187,7 @@ public class MainApp extends Application {
 
     private JFXDrawer jfxDrawer;
 
-    private Timeline t1;
-
     private RotateTransition rotateTransition;
-
-    private final Font font = new Font("黑体", 14);
-
-    private final Font boldFont = Font.font("Timer New Roman", FontWeight.BOLD, FontPosture.ITALIC, 14);
 
     private ImageView rodImageView;
 
@@ -206,10 +200,6 @@ public class MainApp extends Application {
         primaryStage.getIcons().add(logoImage);//设置logo
         panDefaultImage = new Image("/images/topandbottom/logoDark.png");
 
-        t1 = new Timeline(new KeyFrame(Duration.millis(15), event -> {
-            lrcVBox.setLayoutY(lrcVBox.getLayoutY() - 10);
-        }));
-        t1.setCycleCount(3);//执行3次
         date = new Date();
         cloudMusicSpider = new CloudMusicSpider();
         cloudRequest = new CloudRequest();//网易云请求工具类
@@ -283,13 +273,18 @@ public class MainApp extends Application {
 
         initTray(appName, logoImage);
 
+        double w = 740;
+        double h = 600;
         //2.创建一个场景
-        Scene scene = new Scene(topJFXDecorator, 740, 600);
+        Scene scene = new Scene(topJFXDecorator, w, h);
         scene.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
         //3.将场景设置到舞台
         primaryStage.setScene(scene);
 
         primaryStage.setTitle(appName);
+
+        primaryStage.setMinWidth(w);
+        primaryStage.setMinHeight(h);
 
         primaryStage.setOnCloseRequest(event -> {
             try {
@@ -364,6 +359,7 @@ public class MainApp extends Application {
 
     //创建一个左侧面板
     private Node getLeftPane() {
+        Font boldFont = Font.font("Timer New Roman", FontWeight.BOLD, FontPosture.ITALIC, 14);
         VBox localVBox = new VBox(10);
         Label recommendLabGd = new Label("推荐");
         recommendLabGd.setPrefHeight(20);
@@ -546,11 +542,15 @@ public class MainApp extends Application {
         albumLabel.setLayoutY(70);
         albumLabel.setPrefWidth(140.0);
 
-        //5.歌词的VBox容器
-        lrcVBox = new VBox(15);
-        lrcVBox.setPadding(new Insets(10, 10, 10, 10));
-        lrcVBox.setLayoutX(0);
-        lrcVBox.setLayoutY(40);
+        //5.歌词的listview容器
+        lrcListView = new JFXListView();
+        lrcListView.getItems().addAll(FXCollections.observableArrayList("暂无歌词"));
+        lrcListView.setExpanded(true);
+        lrcListView.setDepth(4);
+
+        lrcListView.setPrefSize(400.0, 400.0);
+        lrcListView.setLayoutX(300.0);
+        lrcListView.setLayoutY(100.0);
 
         SVGGlyph svgGlyph = new SVGGlyph("M-45.3,472l5.2-5.2c0.1-0.1,0.2-0.1,0.3,0l1,1c0.1,0.1,0.1,0.2,0,0.3l-5.2,5.2h3.8c0.2,0,0.4,0.2,0.4,0.4v1.2c0,0.1-0.1,0.2-0.2,0.2h-6.3c-0.4,0-0.8-0.4-0.8-0.8V468c0-0.1,0.1-0.2,0.2-0.2h1.2c0.2,0,0.4,0.2,0.4,0.4V472z M-28.7,458l-5.2,5.2c-0.1,0.1-0.2,0.1-0.3,0c0,0,0,0,0,0l-1-1c-0.1-0.1-0.1-0.2,0-0.3c0,0,0,0,0,0l5.2-5.2h-3.8c-0.2,0-0.4-0.2-0.4-0.4v-1.2c0-0.1,0.1-0.2,0.2-0.2h6.3c0.4,0,0.8,0.4,0.8,0.8v6.3c0,0.1-0.1,0.2-0.2,0.2h-1.2c-0.2,0-0.4-0.2-0.4-0.4C-28.7,461.8-28.7,458-28.7,458z", BLACK);
         svgGlyph.setSize(20.0);
@@ -583,31 +583,13 @@ public class MainApp extends Application {
         button.setBorder(border);
         //AnchorPane
         AnchorPane anchorPane = new AnchorPane();
-
-        AnchorPane an1 = new AnchorPane();
-        ScrollPane scrollPane = new ScrollPane();
-        //不显示水平和竖直的滚动条滑块
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-
-        //设置间距
-        scrollPane.setPadding(new Insets(0, 0, 0, 0));
-        scrollPane.setContent(an1);
-        scrollPane.setPrefWidth(400);
-        scrollPane.setPrefHeight(400);
-        scrollPane.setMouseTransparent(true);//使ScrollPane不接收鼠标事件
-        //将anchorPane的长和宽绑定scrollPane的长和宽
-        an1.prefWidthProperty().bind(scrollPane.widthProperty());
-        an1.prefHeightProperty().bind(scrollPane.heightProperty());
-        an1.getChildren().add(lrcVBox);
-        scrollPane.setLayoutX(300);
-        scrollPane.setLayoutY(100);
-        anchorPane.getChildren().addAll(button, s1, rodImageView, scrollPane, sNLab, siLab, albumLabel);
+        anchorPane.getChildren().addAll(button, s1, rodImageView, lrcListView, sNLab, siLab, albumLabel);
         return anchorPane;
     }
 
     //创建一个中间的面板
     private Node getCenterPane(Background background) {
+        Font boldFont = Font.font("Timer New Roman", FontWeight.BOLD, FontPosture.ITALIC, 14);
         //2.歌单：标签
         Label lab1 = new Label("歌单：");
         lab1.setTextFill(BLACK);
@@ -716,18 +698,18 @@ public class MainApp extends Application {
         tableView = new TableView<>();
         tableView.setBorder(border);
         tableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        tableView.setPrefWidth(500);
+        tableView.setPrefWidth(540);
         TableColumn c1 = new TableColumn("音乐标题");
-        c1.setPrefWidth(170);
+        c1.setPrefWidth(180);
         c1.setCellValueFactory(new PropertyValueFactory<>("musicName"));
 
 
         TableColumn c2 = new TableColumn("歌手");
-        c2.setPrefWidth(170);
+        c2.setPrefWidth(180);
         c2.setCellValueFactory(new PropertyValueFactory<>("artistName"));
 
         TableColumn c3 = new TableColumn("专辑");
-        c3.setPrefWidth(170);
+        c3.setPrefWidth(190);
         c3.setCellValueFactory(new PropertyValueFactory<>("album"));
 
         tableView.getColumns().addAll(c1, c2, c3);
@@ -1138,10 +1120,9 @@ public class MainApp extends Application {
         if (currentPlayBean.getMusicName() == null || currentPlayBean.getMusicName().equals("")) {
             return;
         }
-        //初始化lrcvbox
-        //初始化lrcVBox
-        this.lrcVBox.getChildren().clear();
-        this.lrcVBox.setLayoutY(40);
+        //初始化listview
+        ObservableList observableList = this.lrcListView.getItems();
+        observableList.clear();
         this.lrcList.clear();
         this.currentLrcIndex = 0;
         String musicId = currentPlayBean.getMusicId();
@@ -1172,21 +1153,15 @@ public class MainApp extends Application {
                 //换算为总的毫秒
                 totalMilli = new BigDecimal(intMinute * 60).add(new BigDecimal(strSecond)).multiply(new BigDecimal("1000"));
             } catch (NumberFormatException e) {
-                System.err.println(e);
+                Log4jUtils.logger.error("", e);
                 totalMilli = new BigDecimal(0);
             }
             this.lrcList.add(totalMilli);
-            //创建歌词Label
-            Label lab = new Label(row.trim().substring(row.indexOf("]") + 1));
-            lab.setFont(font);
-            //lab.setAlignment(Pos.CENTER);
-
-            //判断是否是第一个歌词，如果是粗体
-            if (this.lrcVBox.getChildren().size() == 0) {
-                lrcStageLabel.setText(lab.getText());
-            }
-            //将歌词Label添加到lrcVBox中
-            this.lrcVBox.getChildren().add(lab);
+            observableList.add(row.trim().substring(row.indexOf("]") + 1));
+        }
+        if (observableList.size() != 0) {
+            this.lrcListView.getSelectionModel().select(0);
+            this.lrcListView.scrollTo(currentLrcIndex);
         }
     }
 
@@ -1486,8 +1461,8 @@ public class MainApp extends Application {
         return (observable, oldValue, newValue) -> {
            /* 此方法用于在媒体播放器播放时自动调用，每隔100毫秒调用一次
             1.由于是每秒使滚动条前进一次，获newValue中的"秒"*/
-            currentSecond = (int) newValue.toSeconds();
 
+            currentSecond = (int) newValue.toSeconds();
             //2.设置滚动条，一秒一次
             if (currentSecond == prevSecond + 1) {
                 //设置滚动条
@@ -1523,45 +1498,14 @@ public class MainApp extends Application {
             if (currentLrcIndex < lrcList.size() - 1 &&
                     millis >= lrcList.get(currentLrcIndex + 1).doubleValue()) {
                 currentLrcIndex++;//当前歌词索引的指示器
-                //上移
-                if (t1.getStatus() != Animation.Status.RUNNING) {
-                    t1.play();
-                }
-                //当前歌词变白
-                Label lab_current = (Label) lrcVBox.getChildren().get(currentLrcIndex);
-                lab_current.setFont(boldFont);
-                lrcStageLabel.setText(lab_current.getText());
-                //前一行变小，变为：浅灰
-                Label lab_Pre_1 = (Label) lrcVBox.getChildren().get(currentLrcIndex - 1);
-                if (lab_Pre_1 != null) {
-                    lab_Pre_1.setFont(font);
-                }
-
-                //当前行的后一行，浅灰
-                if (currentLrcIndex + 1 < lrcList.size()) {
-                    Label lab_next_1 = (Label) lrcVBox.getChildren().get(currentLrcIndex + 1);
-                    lab_next_1.setFont(font);
-                }
             } else if (currentLrcIndex > 0 && millis < lrcList.get(currentLrcIndex).doubleValue()) {
                 //拖动播放条，回退了
                 currentLrcIndex--;
-                //歌词VBox的下移
-                lrcVBox.setLayoutY(lrcVBox.getLayoutY() + 30);
-                //当前歌词变黄，字号：16
-                Label lab_current = (Label) lrcVBox.getChildren().get(currentLrcIndex);
-                lab_current.setFont(boldFont);
-                lrcStageLabel.setText(lab_current.getText());
-                //前一行变为：浅灰
-                if (currentLrcIndex - 1 >= 0) {
-                    Label lab = (Label) lrcVBox.getChildren().get(currentLrcIndex - 1);
-                    lab.setFont(font);
-                }
-                //后一行变为白色
-                if (currentLrcIndex + 1 < lrcVBox.getChildren().size()) {
-                    Label lab = (Label) lrcVBox.getChildren().get(currentLrcIndex + 1);
-                    lab.setFont(font);
-                }
+                lrcListView.scrollTo(currentLrcIndex);
             }
+            lrcListView.getSelectionModel().select(currentLrcIndex);
+            lrcListView.scrollTo(currentLrcIndex);
+            lrcStageLabel.setText(lrcListView.getItems().get(currentLrcIndex));
         };
     }
 

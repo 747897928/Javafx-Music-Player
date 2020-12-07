@@ -36,7 +36,7 @@ public class AboutStage extends Stage {
 
         Label label = new Label(appName, imageView);
 
-        Label label1 = new Label("version 2.0.9");
+        Label label1 = new Label("version 2.1.0");
 
         Label label2 = new Label("开发者：水瓶座鬼才");
 

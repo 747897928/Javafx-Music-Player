@@ -12,17 +12,17 @@
 .button:hover {
     -fx-cursor: hand;
 }
-.list-cell {
+/*.list-cell {
     -fx-text-fill: #292e34;
     -fx-alignment: center;
     -fx-font-family: "Microsoft YaHei", "MicrosoftJhengHei";
     -fx-pref-height: 30px;
     -fx-background-color: transparent;
     -fx-background-insets: 0;
-}
+}*/
 
 .list-cell:selected {
-    -fx-background-color: #b3b5e0;
+    -fx-background-color: #acacb4;
 }
 
 /*.text-field {
