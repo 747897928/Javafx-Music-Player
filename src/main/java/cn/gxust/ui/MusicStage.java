@@ -1,8 +1,11 @@
 package cn.gxust.ui;
 
 import javafx.geometry.Rectangle2D;
+import javafx.scene.Cursor;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -11,14 +14,15 @@ import javafx.stage.StageStyle;
 /**
  * <p>description:  </p>
  * <p>create: 2020/10/15 7:55</p>
+ *
  * @author zhaoyijie
  * @version v1.0
  */
 public abstract class MusicStage extends Stage {
 
-    protected double xOffSet = 0;
+    private double xOffSet = 0;
 
-    protected double yOffSet = 0;
+    private double yOffSet = 0;
 
     /**
      * 包括任务栏的电脑屏幕对象
@@ -55,10 +59,12 @@ public abstract class MusicStage extends Stage {
         root.setOnMousePressed(event -> {
             xOffSet = event.getSceneX();
             yOffSet = event.getSceneY();
+            event.consume();
         });
         root.setOnMouseDragged(event -> {
             this.setX(event.getScreenX() - xOffSet);
             this.setY(event.getScreenY() - yOffSet);
+            event.consume();
         });
     }
 }

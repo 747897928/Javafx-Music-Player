@@ -3,10 +3,16 @@ package cn.gxust.ui;
 import cn.gxust.cloudutils.CloudMusicSpider;
 import cn.gxust.cloudutils.CloudRequest;
 import cn.gxust.cloudutils.FileDownService;
+import cn.gxust.localioutils.LocalMusicUtils;
+import cn.gxust.pojo.PlayBean;
+import cn.gxust.pojo.PlayListBean;
 import cn.gxust.utils.AnimationUtil;
+import cn.gxust.utils.Log4jUtils;
 import com.jfoenix.controls.*;
 import com.jfoenix.svg.SVGGlyph;
-import javafx.animation.*;
+import javafx.animation.Animation;
+import javafx.animation.RotateTransition;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
@@ -19,12 +25,16 @@ import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
 import javafx.scene.layout.*;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
@@ -38,24 +48,22 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import cn.gxust.localioutils.LocalMusicUtils;
-import cn.gxust.utils.Log4jUtils;
-import cn.gxust.pojo.PlayBean;
-import cn.gxust.pojo.PlayListBean;
 import org.pomo.toasterfx.ToastBarToasterService;
 import org.pomo.toasterfx.model.ToastParameter;
 import org.pomo.toasterfx.model.impl.SingleAudio;
 
-import java.awt.MenuItem;
+import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Optional;
 
 import static javafx.scene.paint.Color.BLACK;
 
@@ -191,7 +199,7 @@ public class MainApp extends Application {
 
     private ImageView rodImageView;
 
-    private java.awt.TrayIcon trayIcon;
+    private AlertStage alertStage;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -201,6 +209,7 @@ public class MainApp extends Application {
         panDefaultImage = new Image("/images/topandbottom/logoDark.png");
 
         date = new Date();
+        alertStage = new AlertStage(primaryStage);
         cloudMusicSpider = new CloudMusicSpider();
         cloudRequest = new CloudRequest();//网易云请求工具类
         simpleDateFormat = new SimpleDateFormat("mm:ss");
@@ -271,7 +280,7 @@ public class MainApp extends Application {
         changeListener = initChangeListener();
         valueRunnable = initRunnable();
 
-        initTray(appName, logoImage);
+        TrayIcon trayIcon = initTray(appName, logoImage);
 
         double w = 740;
         double h = 600;
@@ -288,9 +297,9 @@ public class MainApp extends Application {
 
         primaryStage.setOnCloseRequest(event -> {
             try {
-                if (java.awt.SystemTray.isSupported())
+                if (SystemTray.isSupported())
                     if (trayIcon != null)
-                        java.awt.SystemTray.getSystemTray().remove(trayIcon);
+                        SystemTray.getSystemTray().remove(trayIcon);
             } catch (Exception e) {
             }
             System.exit(0);
@@ -298,18 +307,19 @@ public class MainApp extends Application {
         //lrcStage.show();
         //显示舞台
         primaryStage.show();
-        java.awt.SplashScreen splashScreen = java.awt.SplashScreen.getSplashScreen();
+        SplashScreen splashScreen = SplashScreen.getSplashScreen();
         if (splashScreen != null) splashScreen.close();
         changePlaylist();
     }
 
-    private void initTray(String appName, Image logoImage) throws Exception {
-        if (java.awt.SystemTray.isSupported()) {
-            java.awt.SystemTray tray = java.awt.SystemTray.getSystemTray();
+    private TrayIcon initTray(String appName, Image logoImage) throws Exception {
+        TrayIcon trayIcon = null;
+        if (SystemTray.isSupported()) {
+            SystemTray tray = SystemTray.getSystemTray();
             BufferedImage bufferedImage = SwingFXUtils.fromFXImage(logoImage, null);
-            java.awt.PopupMenu popupMenu = new java.awt.PopupMenu();
+            PopupMenu popupMenu = new PopupMenu();
             ActionListener actionListener = (event) -> {
-                MenuItem menuItem = (MenuItem) event.getSource();
+                java.awt.MenuItem menuItem = (java.awt.MenuItem) event.getSource();
                 String s = menuItem.getLabel();
                 switch (s) {
                     case "prevMusic":
@@ -329,15 +339,15 @@ public class MainApp extends Application {
                 }
             };
             java.awt.Font font = new java.awt.Font("FangSong", java.awt.Font.PLAIN, 18);
-            MenuItem preItem = new MenuItem("prevMusic");
+            java.awt.MenuItem preItem = new java.awt.MenuItem("prevMusic");
             preItem.setFont(font);
 
             preItem.addActionListener(actionListener);
-            MenuItem playOrPauseItem = new MenuItem("pause/play");
+            java.awt.MenuItem playOrPauseItem = new java.awt.MenuItem("pause/play");
             playOrPauseItem.addActionListener(actionListener);
-            MenuItem nextItem = new MenuItem("nextMusic");
+            java.awt.MenuItem nextItem = new java.awt.MenuItem("nextMusic");
             nextItem.addActionListener(actionListener);
-            MenuItem exitItem = new MenuItem("exitApp");
+            java.awt.MenuItem exitItem = new java.awt.MenuItem("exitApp");
             exitItem.addActionListener(actionListener);
             popupMenu.add(preItem);
             popupMenu.add(playOrPauseItem);
@@ -347,13 +357,14 @@ public class MainApp extends Application {
                 popupMenu.getItem(i).setFont(font);
             }
             if (bufferedImage != null) {
-                trayIcon = new java.awt.TrayIcon(bufferedImage, appName);
+                trayIcon = new TrayIcon(bufferedImage, appName);
                 trayIcon.setImageAutoSize(true);
                 trayIcon.setToolTip(appName);
                 trayIcon.setPopupMenu(popupMenu);
                 tray.add(trayIcon);
             }
         }
+        return trayIcon;
     }
 
 
@@ -431,7 +442,7 @@ public class MainApp extends Application {
             //打开LocalMusic文件夹
             try {
                 LocalMusicUtils.createLocalMusicDir();
-                java.awt.Desktop.getDesktop().open(new File(LocalMusicUtils.LOCAL_MUSIC_DIR));
+                Desktop.getDesktop().open(new File(LocalMusicUtils.LOCAL_MUSIC_DIR));
             } catch (IOException e) {
                 Log4jUtils.logger.error("", e);
             }
@@ -716,6 +727,161 @@ public class MainApp extends Application {
         ObservableList<PlayBean> tableObList = FXCollections.observableArrayList();
         tableView.setItems(tableObList);
 
+        SVGGlyph svg1 = new SVGGlyph("M512 1024C229.248 1024 0 794.752 0 512S229.248 0 512 0s512 229.248 512 512-229.248 512-512 512z m0-938.666667C276.352 85.333333 85.333333 276.352 85.333333 512s191.018667 426.666667 426.666667 426.666667 426.666667-191.018667 426.666667-426.666667S747.648 85.333333 512 85.333333z m253.269333 441.856c-0.725333 2.048-0.896 4.181333-1.962666 6.144-0.469333 0.938667-1.365333 1.450667-1.92 2.346667-1.450667 2.346667-3.370667 4.309333-5.290667 6.357333-1.749333 1.834667-3.370667 3.669333-5.418667 5.077334-0.853333 0.64-1.408 1.621333-2.346666 2.218666l-333.482667 205.184a42.410667 42.410667 0 0 1-24.661333 12.245334c-1.92 0.426667-3.797333 0.981333-5.76 1.152L384 768c-0.341333 0-0.597333-0.170667-0.938667-0.213333a37.930667 37.930667 0 0 1-29.098666-12.202667c-0.170667-0.128-0.256-0.341333-0.426667-0.512-2.346667-2.517333-4.906667-4.778667-6.656-8.021333-0.597333-1.109333-0.597333-2.304-1.066667-3.456-1.066667-2.176-1.536-4.565333-2.176-6.912-0.725333-2.730667-1.493333-5.333333-1.664-8.106667C341.888 727.424 341.333333 726.485333 341.333333 725.333333V299.648c-0.170667-7.594667 0.853333-15.274667 4.650667-22.314667a39.253333 39.253333 0 0 1 34.517333-20.650666C381.738667 256.597333 382.762667 256 384 256c0.554667 0 1.024 0.298667 1.621333 0.341333l0.341334 0.042667a41.941333 41.941333 0 0 1 29.781333 14.464l332.885333 204.202667c1.237333 0.768 1.962667 2.005333 3.114667 2.901333 0.682667 0.512 1.237333 1.194667 1.877333 1.792a40.661333 40.661333 0 0 1 8.917334 10.752l0.469333 0.554667c0.213333 0.469333 0.213333 0.981333 0.426667 1.450666 2.090667 4.224 3.541333 8.576 4.224 13.312 0.170667 1.28 0.170667 2.474667 0.256 3.712a45.653333 45.653333 0 0 1-0.768 11.776c-0.426667 2.048-1.194667 3.925333-1.877334 5.888zM426.666667 376.064v272.64l221.866666-136.533333-221.866666-136.106667z", BLACK);
+        svg1.setSize(20.0);
+        MenuItem playMenuItem = new MenuItem("播放", svg1);
+        playMenuItem.setOnAction(event -> {
+            if (tableView.getItems().size() != 0) {
+                TableView.TableViewSelectionModel<PlayBean> selectionModel = tableView.getSelectionModel();
+                int selectedIndex = selectionModel.getSelectedIndex();
+                if (selectedIndex == -1) {
+                    return;
+                }
+                this.currentPlayBean = selectionModel.getSelectedItem();
+                this.currentIndex = selectedIndex;
+                selectionModel.clearAndSelect(this.currentIndex);
+                simplifyTableView.getSelectionModel().clearAndSelect(this.currentIndex);
+                this.play();
+            }
+        });
+
+        SVGGlyph svg2 = new SVGGlyph("M512 62.389956c-248.312412 0-449.610044 201.297632-449.610044 449.610044s201.297632 449.610044 449.610044 449.610044 449.610044-201.297632 449.610044-449.610044S760.312412 62.389956 512 62.389956zM786.507004 786.507004c-35.672454 35.672454-77.196173 63.672158-123.416867 83.222423-47.821145 20.22667-98.655927 30.482245-151.09116 30.482245-52.435233 0-103.270015-10.255575-151.09116-30.482245-46.220694-19.549242-87.744413-47.549969-123.416867-83.222423-35.672454-35.672454-63.672158-77.196173-83.222423-123.416867-20.22667-47.821145-30.482245-98.655927-30.482245-151.090137 0-52.435233 10.255575-103.270015 30.482245-151.09116 19.549242-46.220694 47.549969-87.744413 83.222423-123.416867 35.672454-35.672454 77.196173-63.672158 123.416867-83.222423 47.821145-20.22667 98.654904-30.482245 151.09116-30.482245 52.435233 0 103.268992 10.255575 151.09116 30.482245 46.220694 19.549242 87.744413 47.549969 123.416867 83.222423 35.672454 35.672454 63.672158 77.196173 83.222423 123.416867 20.22667 47.821145 30.482245 98.655927 30.482245 151.09116 0 52.435233-10.255575 103.268992-30.482245 151.090137C850.179163 709.310831 822.179458 750.83455 786.507004 786.507004zM575.653739 507.980453 308.169685 305.667701c-3.094478-1.786693-6.961552 0.446162-6.961552 4.019547l0 404.625504c0 3.572362 3.868097 5.806239 6.961552 4.019547l267.484054-202.312752C578.747193 514.232854 578.747193 509.767146 575.653739 507.980453zM718.151174 306.049395l-92.229564 0c-2.563382 0-4.640694 2.365884-4.640694 5.28333l0 401.334551c0 2.917446 2.078335 5.28333 4.640694 5.28333l92.229564 0c2.563382 0 4.640694-2.365884 4.640694-5.28333L722.791867 311.332724C722.791867 308.415278 720.714556 306.049395 718.151174 306.049395z", BLACK);
+        svg2.setSize(20.0);
+        MenuItem nextMenuItem = new MenuItem("下一首播放", svg2);
+
+        nextMenuItem.setOnAction(event -> {
+            ObservableList<PlayBean> observableList = tableView.getItems();
+            if (observableList.size() != 0) {
+                TableView.TableViewSelectionModel<PlayBean> selectionModel = tableView.getSelectionModel();
+                if (selectionModel.getSelectedIndex() == -1) {
+                    return;
+                }
+                int selectedIndex = (selectionModel.getSelectedIndex() + 1) % (observableList.size());
+                this.currentPlayBean = observableList.get(selectedIndex);
+                this.currentIndex = selectedIndex;
+                selectionModel.clearAndSelect(this.currentIndex);
+                simplifyTableView.getSelectionModel().clearAndSelect(this.currentIndex);
+                this.play();
+            }
+        });
+
+        SVGGlyph svg3 = new SVGGlyph("M1239.3472 425.7792a62.0544 62.0544 0 0 0-39.5776-22.5792v-126.976c0-50.1248-40.6528-90.7264-90.6752-90.7264h-500.5312a10.0864 10.0864 0 0 1-3.1232-2.5088L585.216 99.84a99.4816 99.4816 0 0 0-36.352-55.3984A102.912 102.912 0 0 0 486.4 22.1696H116.2752C66.2016 22.1696 25.6 62.7712 25.6 112.7936v817.3568c0 20.2752 6.8096 39.936 19.3536 55.808l-0.3072 0.6144 4.096 4.4544c17.4592 19.2 41.2672 29.7984 67.072 29.7984 4.7616 0 327.7312 0.512 607.0272 0.512 140.8 0 270.4384-0.2048 342.784-0.512 39.936-0.1024 75.2128-29.3888 83.9168-69.5296l49.7664-230.0928 52.5824-242.5344a63.0784 63.0784 0 0 0-12.544-52.8896z m-48.7424-14.336h0.512-0.512zM515.072 206.08l0.256 1.1776c5.0176 19.6608 16.6912 37.2224 33.8432 50.5344 17.5616 13.824 37.7856 21.0944 58.624 21.0944h498.7904V402.944H223.0784c-29.696 0-54.9376 20.224-61.2864 49.3568l-42.8544 197.632V115.456h367.616c0.4608 0 2.5088 0.5632 5.0176 2.5088a10.5984 10.5984 0 0 1 2.9696 3.3792l20.48 84.6336z m637.1328 289.9456l-45.9264 213.0944-47.2576 218.112H154.112l93.3376-431.2064h904.704z", BLACK);
+        svg3.setSize(20.0);
+        MenuItem openFileMenuItem = new MenuItem("打开文件所在目录", svg3);
+
+        openFileMenuItem.setOnAction(event -> {
+            LocalMusicUtils.createLocalMusicDir();
+            try {
+                if (tableView.getItems().size() != 0) {
+                    TableView.TableViewSelectionModel<PlayBean> selectionModel = tableView.getSelectionModel();
+                    int selectedIndex = selectionModel.getSelectedIndex();
+                    if (selectedIndex == -1) {
+                        return;
+                    }
+                    PlayBean playBean = selectionModel.getSelectedItem();
+                    if (playBean != null && playBean.isLocalMusic()) {
+                        String osName = System.getProperty("os.name");
+                        osName = osName.toLowerCase();
+                        if (osName.contains("win")) {
+                            String absolutePath = new File(new URL(playBean.getMp3Url()).toURI()).getAbsolutePath();
+                            Runtime.getRuntime().exec("explorer /select, " + absolutePath);
+                        } else if (osName.contains("mac")) {
+                            String absolutePath = new File(new URL(playBean.getMp3Url()).toURI()).getAbsolutePath();
+                            Runtime.getRuntime().exec("open -R " + absolutePath);
+                        } else {
+                            Desktop.getDesktop().open(new File(LocalMusicUtils.LOCAL_MUSIC_DIR));
+                        }
+                    } else {
+                        service.warn("警告", "本地音乐才有目录", customAudioParameter);
+                    }
+                }
+            } catch (Exception e) {
+                Log4jUtils.logger.warn("", e);
+            }
+        });
+
+        SVGGlyph svg4 = new SVGGlyph("M742.4 0h-358.4C199.68 0 51.2 148.48 51.2 332.8v358.4C51.2 875.52 199.68 1024 384 1024h358.4C926.72 1024 1075.2 875.52 1075.2 691.2v-358.4C1075.2 148.48 926.72 0 742.4 0z m-290.133333 163.84h223.573333c13.653333 0 25.6 11.946667 25.6 25.6s-11.946667 25.6-25.6 25.6H452.266667c-13.653333 0-25.6-11.946667-25.6-25.6 0-15.36 10.24-25.6 25.6-25.6z m428.373333 153.6h-42.666667V781.653333c-3.413333 37.546667-34.133333 68.266667-68.266666 68.266667H356.693333c-34.133333 0-64.853333-30.72-68.266666-68.266667V317.44h-42.666667c-13.653333 0-25.6-11.946667-25.6-25.6s11.946667-25.6 25.6-25.6h633.173333c13.653333 0 25.6 11.946667 25.6 25.6s-10.24 25.6-23.893333 25.6zM339.626667 778.24c1.706667 10.24 10.24 18.773333 17.066666 18.773333H768c6.826667 0 15.36-8.533333 17.066667-18.773333v-460.8H339.626667v460.8zM597.333333 496.64c0-13.653333 11.946667-25.6 25.6-25.6s25.6 11.946667 25.6 25.6v119.466667c0 13.653333-11.946667 25.6-25.6 25.6S597.333333 631.466667 597.333333 617.813333v-121.173333z m-119.466666 0c0-13.653333 11.946667-25.6 25.6-25.6s25.6 11.946667 25.6 25.6v119.466667c0 13.653333-11.946667 25.6-25.6 25.6s-25.6-11.946667-25.6-25.6v-119.466667z", BLACK);
+        svg4.setSize(20.0);
+        MenuItem deleteMenuItem = new MenuItem("从磁盘中删除", svg4);
+
+        alertStage.getOkButton().setOnAction(event -> {
+            PlayBean playBean = tableView.getSelectionModel().getSelectedItem();
+            if (playBean == null) {
+                return;
+            }
+            String mp3Url = playBean.getMp3Url();
+            try {
+                URL url = new URL(mp3Url);
+                File voiceFile = new File(url.toURI());
+                if (voiceFile.exists()) {
+                    boolean b = voiceFile.delete();
+                    if (b) {
+                        String localLrlPath = playBean.getLocalLrlPath();
+                        File lrcFile = new File(localLrlPath);
+                        if (lrcFile.exists()) {
+                            lrcFile.delete();
+                        }
+                        tableView.getItems().remove(playBean);
+                        service.success("成功删除", "音乐文件名：" + playBean.getMusicName(), customAudioParameter);
+                    } else {
+                        service.fail("错误", "删除音乐失败", customAudioParameter);
+                    }
+                }
+            } catch (Exception e) {
+                Log4jUtils.logger.warn("", e);
+            }finally {
+                alertStage.hide();
+            }
+        });
+        deleteMenuItem.setOnAction(event -> {
+            if (tableView.getItems().size() != 0) {
+                TableView.TableViewSelectionModel<PlayBean> selectionModel = tableView.getSelectionModel();
+                int selectedIndex = selectionModel.getSelectedIndex();
+                if (selectedIndex == -1) {
+                    return;
+                }
+                PlayBean playBean = selectionModel.getSelectedItem();
+                if (playBean == null) {
+                    return;
+                }
+                if (playBean == currentPlayBean) {
+                    service.warn("警告", "这首歌正在播放，不允许删除", customAudioParameter);
+                    return;
+                }
+                if (playBean.isLocalMusic()) {
+                    alertStage.setHeaderText("是否彻底删除以下音乐文件?");
+                    alertStage.setContentText(playBean.getMusicName());
+                    alertStage.show();
+                } else {
+                    service.fail("错误操作", "非本地音乐不能删除", customAudioParameter);
+                }
+            }
+        });
+
+        SVGGlyph svg5 = new SVGGlyph("M339.57 697c1 0.86 1.79 1 1.16 0.46a21.38 21.38 0 0 0-2-1.18c0.27 0.27 0.56 0.52 0.84 0.72zM428.33 696.49c-0.5 0.34-1 0.75-1.45 1.13a5.06 5.06 0 0 0 0.81-0.58zM393.21 711.57c3-0.3 1.54-0.23-0.07 0h-0.28zM392.86 711.6h-0.07c-0.43 0.06-0.86 0.14-1.2 0.22 0.41-0.09 0.84-0.16 1.27-0.22zM338.73 696.32l-0.06-0.06-0.56-0.28zM317.65 668.51c0.42 1.14 1.06 1.81 0.82 1.11-0.39-0.8-0.82-1.58-1.27-2.34zM542.41 582.32a3.85 3.85 0 0 0 0.76-1.21 18.8 18.8 0 0 0-1.45 2zM552.76 564.32l-0.35 0.57a2 2 0 0 0-0.08 0.22c0.14-0.27 0.28-0.54 0.43-0.79zM429.15 696l-0.58 0.29-0.24 0.22a5.54 5.54 0 0 1 0.82-0.51zM556.72 526.64v0.94c0 0.29 0.12 0.6 0.17 0.91a15 15 0 0 1-0.17-1.85zM557 528.94l-0.09-0.45c0.05 0.3 0.09 0.59 0.11 0.88s0 0.64 0.08 1a6.14 6.14 0 0 0-0.1-1.43zM541.72 583.12l-0.08 0.09c-0.09 0.18-0.19 0.37-0.28 0.57a7.16 7.16 0 0 1 0.36-0.66zM317.2 667.28v-0.07l-0.36-0.57zM552.33 565.11c-0.42 0.77-0.8 1.59-1.16 2.43a3.83 3.83 0 0 0 0.76-1.35c0.13-0.36 0.26-0.72 0.4-1.08zM312.69 630.75c0.05-0.3 0.11-0.6 0.16-0.89s0-0.58 0-0.9a14 14 0 0 1-0.16 1.79zM375.67 711.83l-0.38-0.08zM597.65 326.45l-1 0.71c-2.73 1.92-0.1 0.16 1-0.71zM374.05 711.57h0.42c-1.73-0.22-3.61-0.32-0.42 0zM706.72 411.9l0.55-1.14a3.69 3.69 0 0 0 0.39-1.19c0 0.16-0.11 0.32-0.17 0.48-0.18 0.5-0.49 1.2-0.77 1.85zM706.72 411.9l-0.13 0.26c0 0.16-0.06 0.31-0.09 0.48a4.3 4.3 0 0 1 0.22-0.74zM512 65C265.13 65 65 265.13 65 512s200.13 447 447 447 447-200.13 447-447S758.87 65 512 65z m91.65 492.62c-3.82 26.66-17.91 49.76-36.69 68.54l-83.15 83.15C472.15 721 461 733 446.92 741.88c-32.36 20.59-74.27 23.52-109.41 8.68S275 704.24 267.1 666.7c-8.17-38.92 2.64-79.4 30-108.46 21.52-22.83 44.42-44.48 66.6-66.66 9.48-9.48 24.35-8.79 33.92 0s8.88 25 0 33.91l-2.53 2.51L356 567.12l-18.34 18.33c-1.41 1.41-2.83 2.82-4.23 4.24-1.16 1.16-2.3 2.33-3.41 3.54s-2.22 2.87-3.47 4.09l-0.45 0.63a92.07 92.07 0 0 0-6.27 10.27c-0.72 1.36-1.37 2.74-2 4.13-0.21 0.54-0.45 1.08-0.65 1.6a96.77 96.77 0 0 0-3.51 11.91c-0.3 1.33-0.55 2.66-0.8 4-0.06 3.35-0.31 3.57-0.36 2.8a97.31 97.31 0 0 0-0.29 10.66c0 1.6 0.13 3.19 0.25 4.79l0.12 1.25c0.88 3.74 1.38 7.56 2.44 11.28 0.51 1.77 1.08 3.53 1.69 5.27 0.15 0.43 0.31 0.87 0.48 1.3a14 14 0 0 1 1.29 2.41c1.27 2.53 2.35 5.22 3.79 7.62 1 1.63 2 3.23 3.05 4.79 0.46 0.68 4.1 6.28 1.93 2.78-2-3.29 0.24 0.21 0.87 0.94s1.28 1.46 1.93 2.18q1.48 1.64 3 3.19c1.39 1.38 2.81 2.72 4.28 4l1.3 1.12a11.4 11.4 0 0 1 2.06 1.24c2.51 1.65 4.92 3.71 7.46 5.17 1.62 0.93 3.27 1.82 4.95 2.65 0.27 0.14 1.27 0.61 2.22 1.06 0.6 0.25 1.32 0.55 1.64 0.67 0.87 0.31 1.74 0.62 2.61 0.91 1.75 0.59 3.52 1.12 5.29 1.61 3.26 0.88 6.6 1.31 9.87 2.06 0.67 0.07 1.34 0.13 2 0.18 1.82 0.13 3.64 0.2 5.47 0.23a97.37 97.37 0 0 0 10.53-0.43l0.35-0.05c0.4-0.06 0.79-0.11 1.16-0.18q2.71-0.48 5.39-1.13a95.25 95.25 0 0 0 10.57-3.2l0.61-0.25c3.89-2 1.62-0.71 0 0l-1.18 0.59c0.62-0.31 1.28-0.56 1.91-0.86q2.55-1.17 5-2.5a94.64 94.64 0 0 0 9.65-5.94c0.2-0.14 0.41-0.31 0.62-0.47-0.91 0.51-1 0 1.69-1.35 1.18-1 2.35-2 3.49-3.1 0.79-0.75 1.56-1.51 2.34-2.28 8.67-8.58 17.25-17.26 25.88-25.88q37.55-37.54 75.08-75.08c1.42-1.42 2.83-2.84 4.18-4.32q1.07-1.18 2.1-2.4c1.13-2.23 1.66-2.56 1.53-2.1 0.53-0.67 1.07-1.33 1.51-2a93.61 93.61 0 0 0 5.38-9.12c0.4-0.78 0.75-1.62 1.11-2.46-0.27 0.24-0.15-0.41 1.24-2.65l0.48-1.31a95 95 0 0 0 3-10.6c0.43-1.92 0.67-3.9 1.07-5.82 0-0.45 0.09-0.91 0.13-1.37a95.38 95.38 0 0 0 0.23-11c-0.05-1.5-0.15-3-0.27-4.49 0 0.77-0.3 0.57-0.36-2.76-0.6-3.16-1.27-6.29-2.16-9.38-0.64-2.21-1.36-4.41-2.15-6.57-0.18-0.49-0.41-1-0.61-1.51C550.3 507 548.75 504 547 501c-1.1-1.83-2.27-3.61-3.49-5.36-0.26-0.37-0.53-0.73-0.8-1.09-2-2.31-4-4.64-6.18-6.82-2-2-4.14-3.88-6.28-5.75a6.14 6.14 0 0 1-0.51-0.51c-0.48-0.31-1-0.6-1.29-0.83a99 99 0 0 0-11.28-6.77c-11.89-6.18-14.43-21.79-8.61-32.81 6.26-11.84 21.69-14.39 32.81-8.61a122 122 0 0 1 26.61 19c29.2 27.22 41.26 67.16 35.67 106.17z m143.22-118.87c-9.37 18.46-24.65 32.38-39.06 46.8l-32.92 32.91c-9.47 9.48-24.34 8.79-33.91 0s-8.88-25 0-33.91l2.66-2.66 37.82-37.82c3.36-3.37 6.75-6.72 10.1-10.1 1.38-1.4 2.73-2.82 4-4.29 0.47-0.53 2-2.44 2.46-3 0.58-0.81 1.15-1.6 1.3-1.83q1.39-2.06 2.69-4.18c1.68-2.77 3.13-5.63 4.55-8.53 0.53-2.82 1.14-3.28 1.07-2.59 0.49-1.36 1-2.73 1.39-4.11a93.74 93.74 0 0 0 2.65-10.69c0.07-0.35 0.13-0.69 0.19-1 0.13-1.38 0.32-2.77 0.41-4.15a95.23 95.23 0 0 0 0.08-10.95c-0.08-1.59-0.2-3.18-0.36-4.76-0.65-3.54-1.38-7-2.38-10.51q-0.76-2.66-1.68-5.27c-0.16-0.45-0.62-1.63-1-2.53-0.56-1.21-1.31-2.81-1.53-3.26-0.74-1.46-1.53-2.9-2.35-4.33-1.66-2.89-3.53-5.64-5.44-8.37l-1.12-1.35q-1.9-2.22-3.95-4.32a95 95 0 0 0-7-6.5l-0.24-0.2c-3.32-2.26-1.21-1 0 0l1.15 0.79c-0.59-0.4-1.15-0.86-1.73-1.28q-2.31-1.68-4.72-3.21a92.24 92.24 0 0 0-9.21-5.16l-1-0.5A49.63 49.63 0 0 1 665 316a90.23 90.23 0 0 0-9.3-2.6c-1.73-0.39-3.48-0.68-5.23-1l-0.59-0.07a95 95 0 0 0-10.26-0.4q-3.09 0-6.16 0.28l-1.48 0.15c-1 0.15-2.53 0.39-3 0.48-1.8 0.35-3.59 0.76-5.37 1.21a110 110 0 0 0-10.48 3.34l-0.09 0.05q-2.22 1-4.4 2.16a94.3 94.3 0 0 0-9.64 5.9c-0.34 0.23-0.66 0.46-1 0.7-0.58 1.08-2.86 2.32-3.78 3.15-1.59 1.42-3.11 2.92-4.63 4.43q-13.1 13.05-26.15 26.15l-72.61 72.61-2.43 2.46c-0.77 0.78-1.54 1.55-2.28 2.35-1.34 1.42-2.6 2.89-3.87 4.36l-0.2 0.23a95.52 95.52 0 0 0-6.09 9.57 90.25 90.25 0 0 0-2.28 4.36c-0.17 0.34-0.33 0.69-0.49 1-0.54 3.28-2.57 6.89-3.44 10.1s-1.41 6.25-2 9.4c0 0.37-0.07 0.75-0.1 1.12a90.66 90.66 0 0 0-0.31 5.47 95.11 95.11 0 0 0 0.25 10.27c0 0.38 0.07 0.76 0.11 1.14 0.37 1.51 0.48 3.2 0.79 4.7a93.43 93.43 0 0 0 2.46 9.33c0.56 1.76 1.23 3.47 1.85 5.2 0.1 0.24 0.2 0.48 0.31 0.7a94.37 94.37 0 0 0 5 9.28c1.12 1.81 2.29 3.59 3.53 5.33l0.33 0.45c2.05 2.33 4 4.68 6.24 6.88 9.48 9.48 8.79 24.34 0 33.92s-25 8.88-33.92 0a126.55 126.55 0 0 1-16.47-20.58C419 520.48 414 481.9 425.07 449c7.09-21.1 19.61-38.11 35.15-53.65l79.83-79.84c9.93-9.92 19.46-19.92 30.68-28.44 28-21.28 65.87-27.8 99.77-19.38 33.68 8.37 64.31 33 78.47 64.85 15.28 34.35 15.03 72.46-2.1 106.21zM328.07 595.22c0.16-0.23 0.2-0.27 0 0zM312.69 630.75c0 0.17-0.07 0.34-0.1 0.51a6.17 6.17 0 0 0-0.1 1.4c0-0.32 0.05-0.65 0.08-1s0.07-0.59 0.12-0.91z", BLACK);
+        svg5.setSize(20.0);
+        MenuItem copyLinkMenuItem = new MenuItem("复制链接", svg5);
+
+        copyLinkMenuItem.setOnAction(event -> {
+            ObservableList<PlayBean> observableList = tableView.getItems();
+            if (observableList.size() != 0) {
+                PlayBean playBean = tableView.getSelectionModel().getSelectedItem();
+                if (playBean != null) {
+                    Clipboard clipboard = Clipboard.getSystemClipboard();
+                    clipboard.clear();
+                    ClipboardContent clipboardContent = new ClipboardContent();
+                    clipboardContent.put(DataFormat.PLAIN_TEXT, playBean.getMp3Url());
+                    clipboard.setContent(clipboardContent);
+                }
+            }
+
+        });
+
+        ContextMenu contextMenu = new ContextMenu();
+
+        contextMenu.getItems().addAll(playMenuItem, nextMenuItem, copyLinkMenuItem, openFileMenuItem, deleteMenuItem);
+
+        tableView.setContextMenu(contextMenu);
         simplifyTableView = new TableView<>();
         simplifyTableView.setPrefHeight(260.0);
         TableColumn siCol = new TableColumn("");
@@ -1121,7 +1287,7 @@ public class MainApp extends Application {
             return;
         }
         //初始化listview
-        ObservableList observableList = this.lrcListView.getItems();
+        ObservableList<String> observableList = this.lrcListView.getItems();
         observableList.clear();
         this.lrcList.clear();
         this.currentLrcIndex = 0;
@@ -1161,6 +1327,7 @@ public class MainApp extends Application {
         }
         if (observableList.size() != 0) {
             this.lrcListView.getSelectionModel().select(0);
+            this.lrcStageLabel.setText(observableList.get(0));
             this.lrcListView.scrollTo(currentLrcIndex);
         }
     }
@@ -1169,10 +1336,10 @@ public class MainApp extends Application {
      * 切歌，上一首歌曲
      */
     public void preMusic() {
-        if (this.currentPlayBean != null) {
-            this.mediaPlayer.stop();
-        }
         if (this.tableView.getItems().size() != 0) {
+            if (this.currentPlayBean != null) {
+                this.mediaPlayer.stop();
+            }
             //让当前的索引-1
             this.currentIndex--;
             if (currentIndex < 0) {
@@ -1230,10 +1397,10 @@ public class MainApp extends Application {
     }
 
     public void nextMusic() {
-        if (this.currentPlayBean != null) {
-            this.mediaPlayer.stop();
-        }
         if (this.tableView.getItems().size() != 0) {
+            if (this.currentPlayBean != null) {
+                this.mediaPlayer.stop();
+            }
             //让当前的索引+1
             this.currentIndex++;
             if (currentIndex >= this.tableView.getItems().size()) {
