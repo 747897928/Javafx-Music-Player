@@ -140,4 +140,8 @@ public class PlayBean {
                 ", localLrlPath='" + localLrlPath + '\'' +
                 '}';
     }
+
+    public String getMusicInf() {
+        return musicName + '-' + artistName + '-' + album + '-' + imageUrl;
+    }
 }

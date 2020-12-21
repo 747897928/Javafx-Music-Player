@@ -63,7 +63,6 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Optional;
 
 import static javafx.scene.paint.Color.BLACK;
 
@@ -238,6 +237,41 @@ public class MainApp extends Application {
         jfxDrawer.setDefaultDrawerSize(1080);
         jfxDrawer.setDirection(JFXDrawer.DrawerDirection.BOTTOM);
         jfxDrawer.setContent(bo2);
+        /*隐藏歌曲详情页时暂停动画来减少资源消耗*/
+        jfxDrawer.setOnDrawerClosed(event -> {
+            if (mediaPlayer != null && mediaPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
+                if (rotateTransition.getStatus() == Animation.Status.RUNNING) {
+                    rotateTransition.pause();
+                }
+                System.out.println(rotateTransition.getStatus());
+            }
+        });
+        jfxDrawer.setOnDrawerOpened(event -> {
+            if (mediaPlayer != null && mediaPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
+                if (rotateTransition.getStatus() != Animation.Status.RUNNING) {
+                    rotateTransition.play();
+                }
+                System.out.println(rotateTransition.getStatus());
+            }
+        });
+
+        primaryStage.setOnHidden(event -> {
+            if (mediaPlayer != null && mediaPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
+                if (rotateTransition.getStatus() == Animation.Status.RUNNING) {
+                    rotateTransition.pause();
+                }
+                System.out.println(rotateTransition.getStatus());
+            }
+        });
+
+        primaryStage.setOnShown(event -> {
+            if (mediaPlayer != null && mediaPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
+                if (rotateTransition.getStatus() != Animation.Status.RUNNING) {
+                    rotateTransition.play();
+                }
+                System.out.println(rotateTransition.getStatus());
+            }
+        });
         HBox h4 = new HBox();
         h4.getChildren().add(getSidePane());
         h4.setAlignment(Pos.CENTER);
@@ -251,7 +285,7 @@ public class MainApp extends Application {
 
         mainborderPane.setBottom(bottomPane);
 
-        lrcStage = new LrcStage(this, logoImage, appName);
+        lrcStage = new LrcStage(this, logoImage);
         lrcStageLabel = lrcStage.getLrcStageLabel();
         simplifyModelStage = new SimplifyModelStage(this, logoImage, appName, paint);
 
@@ -284,6 +318,7 @@ public class MainApp extends Application {
 
         double w = 740;
         double h = 600;
+
         //2.创建一个场景
         Scene scene = new Scene(topJFXDecorator, w, h);
         scene.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
@@ -294,6 +329,8 @@ public class MainApp extends Application {
 
         primaryStage.setMinWidth(w);
         primaryStage.setMinHeight(h);
+
+        topJFXDecorator.requestFocus();
 
         primaryStage.setOnCloseRequest(event -> {
             try {
@@ -663,7 +700,6 @@ public class MainApp extends Application {
         lab3.setLayoutX(30);
         lab3.setLayoutY(140);
 
-
         JFXTextField filterTextField = new JFXTextField();
         filterTextField.setPromptText("搜索表格中的音乐");
         filterTextField.setLabelFloat(true);
@@ -829,7 +865,7 @@ public class MainApp extends Application {
                 }
             } catch (Exception e) {
                 Log4jUtils.logger.warn("", e);
-            }finally {
+            } finally {
                 alertStage.hide();
             }
         });
@@ -877,12 +913,33 @@ public class MainApp extends Application {
 
         });
 
+        SVGGlyph svg6 = new SVGGlyph("M511.68 0C271.68 0 90.56 87.04 90.56 202.24v618.88C90.56 936.32 271.68 1024 511.68 1024s421.12-87.04 421.12-202.24V202.24C933.44 87.04 752.32 0 511.68 0z m0 64c210.56 0 357.12 72.96 357.12 138.24S722.24 340.48 511.68 340.48 154.56 267.52 154.56 202.24 301.12 64 511.68 64z m0 896C301.12 960 154.56 886.4 154.56 821.12v-96a609.92 609.92 0 0 0 357.12 92.16 739.84 739.84 0 0 0 288-52.48 32 32 0 1 0-25.6-58.88 675.2 675.2 0 0 1-262.4 47.36C301.12 753.28 154.56 680.32 154.56 615.04V518.4a609.92 609.92 0 0 0 357.12 92.8 741.76 741.76 0 0 0 286.08-51.84 32 32 0 0 0-25.6-58.88 677.76 677.76 0 0 1-261.12 46.72C301.12 547.2 154.56 474.24 154.56 408.96V312.32a609.92 609.92 0 0 0 357.12 92.16 609.92 609.92 0 0 0 357.12-92.16v512c0.64 62.08-146.56 135.68-357.12 135.68z", BLACK);
+
+        svg6.setSize(20.0);
+        MenuItem copyObjectMenuItem = new MenuItem("复制歌曲信息", svg6);
+
+        copyObjectMenuItem.setOnAction(event -> {
+            ObservableList<PlayBean> observableList = tableView.getItems();
+            if (observableList.size() != 0) {
+                PlayBean playBean = tableView.getSelectionModel().getSelectedItem();
+                if (playBean != null) {
+                    Clipboard clipboard = Clipboard.getSystemClipboard();
+                    clipboard.clear();
+                    ClipboardContent clipboardContent = new ClipboardContent();
+                    clipboardContent.put(DataFormat.PLAIN_TEXT, playBean.getMusicInf());
+                    clipboard.setContent(clipboardContent);
+                }
+            }
+
+        });
+
         ContextMenu contextMenu = new ContextMenu();
 
-        contextMenu.getItems().addAll(playMenuItem, nextMenuItem, copyLinkMenuItem, openFileMenuItem, deleteMenuItem);
+        contextMenu.getItems().addAll(playMenuItem, nextMenuItem, copyLinkMenuItem, openFileMenuItem, deleteMenuItem, copyObjectMenuItem);
 
         tableView.setContextMenu(contextMenu);
         simplifyTableView = new TableView<>();
+        simplifyTableView.setContextMenu(contextMenu);
         simplifyTableView.setPrefHeight(260.0);
         TableColumn siCol = new TableColumn("");
         siCol.setCellValueFactory(new PropertyValueFactory<>("musicName"));
@@ -1178,7 +1235,6 @@ public class MainApp extends Application {
             currentPlayBean.setMp3Url(mp3Url);
         }
         rotateTransition.stop();
-        mediaPlayer = new MediaPlayer(new Media(mp3Url));
 
         //System.out.println(mp3Url);
         if (!playable || mp3Url.equals("https://music.163.com/404")) {
@@ -1188,6 +1244,7 @@ public class MainApp extends Application {
             service.fail("错误", "无法播放此音乐，可能是付费音乐!", customAudioParameter);
             return;
         }
+        mediaPlayer = new MediaPlayer(new Media(mp3Url));
         new Thread(() -> mediaPlayer.play()).start();
         loadLrc();
         mediaPlayer.currentTimeProperty().addListener(changeListener);
@@ -1275,8 +1332,10 @@ public class MainApp extends Application {
         rt.setToAngle(35);
         rt.setCycleCount(1);
         rt.play();
-        if (rotateTransition.getStatus() != Animation.Status.RUNNING) {
-            rotateTransition.play();
+        if (mainStage.isShowing() && jfxDrawer.isOpened()) {
+            if (rotateTransition.getStatus() != Animation.Status.RUNNING) {
+                rotateTransition.play();
+            }
         }
         //System.gc();
     }
@@ -1337,7 +1396,7 @@ public class MainApp extends Application {
      */
     public void preMusic() {
         if (this.tableView.getItems().size() != 0) {
-            if (this.currentPlayBean != null) {
+            if (this.currentPlayBean != null && mediaPlayer != null) {
                 this.mediaPlayer.stop();
             }
             //让当前的索引-1
@@ -1398,7 +1457,7 @@ public class MainApp extends Application {
 
     public void nextMusic() {
         if (this.tableView.getItems().size() != 0) {
-            if (this.currentPlayBean != null) {
+            if (this.currentPlayBean != null && mediaPlayer != null) {
                 this.mediaPlayer.stop();
             }
             //让当前的索引+1
@@ -1556,7 +1615,7 @@ public class MainApp extends Application {
 
         //Slider的鼠标抬起事件中
         sliderSong.setOnMouseReleased(e -> {
-            if (currentPlayBean != null) {
+            if (currentPlayBean != null && mediaPlayer != null) {
                 Duration duration = new Duration(sliderSong.getValue() * 1000);
                 mediaPlayer.seek(duration);//设置新的播放时间
 
@@ -1597,11 +1656,11 @@ public class MainApp extends Application {
 
         //监听进度条的值发生变化时
         sldVolume.valueProperty().addListener((observable, oldValue, newValue) -> {
-            double value = sldVolume.getValue();
-            if (currentPlayBean != null) {
-                mediaPlayer.setVolume(value / 100.0);
+            double volumeValue = sldVolume.getValue();
+            if (currentPlayBean != null && mediaPlayer != null) {
+                mediaPlayer.setVolume(volumeValue / 100.0);
             }
-            if (value == 0) {
+            if (volumeValue == 0) {
                 voiceSvg.changeSvgPath(VoiceStatus.VOICE_ZERO);
             } else {
                 voiceSvg.changeSvgPath(VoiceStatus.VOICE_N);

@@ -133,7 +133,7 @@ public class LocalMusicUtils {
             }
             playBean.setLocalMusic(true);
             playBean.setMp3Url(file.toURI().toString());
-            String lrcPath = LocalMusicUtils.LOCAL_LRC_DIR + fileName + ".lrc";
+            String lrcPath = LOCAL_LRC_DIR + fileName + ".lrc";
             playBean.setLocalLrlPath(lrcPath);//记录本地lrc文件所在位置
             list.add(playBean);
         }
@@ -180,15 +180,12 @@ public class LocalMusicUtils {
         } catch (Exception e) {
             //Log4jUtils.logger.error("该歌曲无专辑图片", e);
             return null;
-        }//Log4jUtils.logger.error("", e);
-
+        }
         Tag tag = audioFile.getTag();
-        ;
         /*获取音乐封面*/
         try {
             BufferedImage artwork = tag.getFirstArtwork().getImage();
-            WritableImage writableImage = SwingFXUtils.toFXImage(artwork, null);
-            return writableImage;
+            return SwingFXUtils.toFXImage(artwork, null);
         } catch (Exception e) {
             //Log4jUtils.logger.error("", e);
             return null;
@@ -263,7 +260,7 @@ public class LocalMusicUtils {
             boolean b = ImageIO.write(bufferedImage, "jpg", file1);
             if (!b) {
                 Log4jUtils.logger.warn("ImageIO无法把音乐封面写入到文件内！尝试下载获取");
-                downloadFile(playBean.getImageUrl() + "?param=200y200", file1);
+                downloadFile(playBean.getImageUrl() + "?param=300y300", file1);
             }
             try {
                 Artwork artwork = Artwork.createArtworkFromFile(file1);

@@ -13,6 +13,8 @@ import javafx.scene.paint.Paint;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 
 /**
@@ -24,9 +26,9 @@ public class LrcStage extends MusicStage {
 
     private final Label lrcStageLabel;
 
-    private PlaySvg playSvg;
+    private final PlaySvg playSvg;
 
-    public LrcStage(MainApp mainApp, Image logoImage, String appName) {
+    public LrcStage(MainApp mainApp, Image logoImage) {
         playSvg = new PlaySvg();
         borderPane = new BorderPane();
         borderPane.setStyle("-fx-border-color:  rgba(0, 0, 0, 0.3);-fx-background-color:  rgba(0, 0, 0, 0.1)");
@@ -39,11 +41,18 @@ public class LrcStage extends MusicStage {
         lrcStageLabel.setStyle("-fx-background-radius: 2.0em;-fx-effect: dropshadow(three-pass-box, rgb(0,0,0), 5.0,0.6, 0, 0);");
         lrcStageLabel.setAlignment(Pos.CENTER);//字体居中
         lrcStageLabel.setTextFill(Color.WHITE);
+        /*隐藏图标+个性化定制*/
+        Stage stage = new Stage();
+        stage.setWidth(1.0);
+        stage.setHeight(1.0);
+        stage.initStyle(StageStyle.UTILITY);
+        stage.setOpacity(0.0);
         this.diyStage(true, 0, 320, borderPane);
+        this.initOwner(stage);
         this.addDragEvent();
         this.initTopPane(mainApp);
         this.getIcons().add(logoImage);
-        this.setTitle(appName);
+        stage.show();
     }
 
     public void initTopPane(MainApp mainApp) {
