@@ -1049,13 +1049,13 @@ public class MainApp extends Application {
         siCol.prefWidthProperty().bind(simplifyTableView.widthProperty());
         simplifyTableView.getStyleClass().add("simplifyTableView");
         simplifyTableView.setItems(tableObList);
-        simplifyTableView.setRowFactory(tv -> {
-            TableRow<PlayBean> row = new TableRow<>();
-            row.setOnMouseClicked(event -> {
-                //验证双击
-                if (event.getClickCount() == 2 && !row.isEmpty()) {
+
+        simplifyTableView.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                PlayBean playBean = simplifyTableView.getSelectionModel().getSelectedItem();
+                if (playBean != null) {
                     //1.获取选中行的索引
-                    this.currentIndex = row.getIndex();
+                    this.currentIndex = simplifyTableView.getSelectionModel().getSelectedIndex();
                     //2.将前一秒置为：0
                     this.prevSecond = 0;
                     //3.判断当前是否正在播放，如果是：将其停止
@@ -1065,23 +1065,22 @@ public class MainApp extends Application {
                         }
                     }
                     //4.获取当前的PlayBean
-                    this.currentPlayBean = row.getItem();
-                    this.tableView.getSelectionModel().select(this.currentIndex);
+                    this.currentPlayBean = playBean;
+                    this.tableView.getSelectionModel().clearAndSelect(this.currentIndex);
                     this.tableView.scrollTo(currentIndex);
                     //5.播放
                     play();
                 }
-            });
-            return row;
+            }
+            event.consume();
         });
 
-        tableView.setRowFactory(tv -> {
-            TableRow<PlayBean> row = new TableRow<>();
-            row.setOnMouseClicked(event -> {
-                //验证双击
-                if (event.getClickCount() == 2 && !row.isEmpty()) {
+        tableView.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                PlayBean playBean = tableView.getSelectionModel().getSelectedItem();
+                if (playBean != null) {
                     //1.获取选中行的索引
-                    this.currentIndex = row.getIndex();
+                    this.currentIndex = tableView.getSelectionModel().getSelectedIndex();
                     //2.将前一秒置为：0
                     this.prevSecond = 0;
                     //3.判断当前是否正在播放，如果是：将其停止
@@ -1091,15 +1090,16 @@ public class MainApp extends Application {
                         }
                     }
                     //4.获取当前的PlayBean
-                    this.currentPlayBean = row.getItem();
-                    this.simplifyTableView.getSelectionModel().select(this.currentIndex);
+                    this.currentPlayBean = playBean;
+                    this.simplifyTableView.getSelectionModel().clearAndSelect(this.currentIndex);
                     this.simplifyTableView.scrollTo(currentIndex);
                     //5.播放
                     play();
                 }
-            });
-            return row;
+            }
+            event.consume();
         });
+
         BorderPane songListBorderPane = new BorderPane();
         songListBorderPane.setTop(anchorPane);
         songListBorderPane.setCenter(tableView);
