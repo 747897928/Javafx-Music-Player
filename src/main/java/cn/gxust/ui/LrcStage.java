@@ -22,9 +22,9 @@ import javafx.stage.StageStyle;
  */
 public class LrcStage extends MusicStage {
 
-    private final BorderPane borderPane;
+    private final BorderPane borderPane;/*父面板*/
 
-    private final Label lrcStageLabel;
+    private final Label lrcStageLabel;/*用来放歌词的标签*/
 
     private final PlaySvg playSvg;
 
@@ -88,7 +88,7 @@ public class LrcStage extends MusicStage {
         closeButton.setOnAction(e -> {
             this.hide();//隐藏lrcpane
         });
-        Region region = new Region();
+        Region region = new Region();/*用于占空间，让三个按钮占中间，关闭按钮向右对齐*/
         region.setPrefSize(borderPane.getPrefWidth() / 2 - 50, 2);
         BorderPane bo = new BorderPane();
         bo.setLeft(region);

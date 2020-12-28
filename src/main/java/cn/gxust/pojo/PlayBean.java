@@ -23,10 +23,11 @@ public class PlayBean {
 
     private boolean isLocalMusic = false;
 
-    private String localLrlPath;
+    private String localLrcPath;
 
     private boolean isPlayable = true;
 
+    private String lrc;
 
     public PlayBean() {
 
@@ -103,12 +104,12 @@ public class PlayBean {
         isLocalMusic = localMusic;
     }
 
-    public String getLocalLrlPath() {
-        return localLrlPath;
+    public String getLocalLrcPath() {
+        return localLrcPath;
     }
 
-    public void setLocalLrlPath(String localLrlPath) {
-        this.localLrlPath = localLrlPath;
+    public void setLocalLrcPath(String localLrcPath) {
+        this.localLrcPath = localLrcPath;
     }
 
     public void setPlayable(boolean playable) {
@@ -119,6 +120,14 @@ public class PlayBean {
         return isPlayable;
     }
 
+    public String getLrc() {
+        return lrc;
+    }
+
+    public void setLrc(String lrc) {
+        this.lrc = lrc;
+    }
+
     public String getSaveFileName() {
         String s = musicName;
         if (!artistName.equals("")) {
@@ -127,9 +136,13 @@ public class PlayBean {
         return s;
     }
 
+    public String getMusicInf() {
+        return musicName + '-' + artistName + '-' + album + '-' + imageUrl;
+    }
+
     @Override
     public String toString() {
-        return "{" +
+        return "PlayBean{" +
                 "musicName='" + musicName + '\'' +
                 ", musicId='" + musicId + '\'' +
                 ", mp3Url='" + mp3Url + '\'' +
@@ -137,11 +150,9 @@ public class PlayBean {
                 ", imageUrl='" + imageUrl + '\'' +
                 ", album='" + album + '\'' +
                 ", isLocalMusic=" + isLocalMusic +
-                ", localLrlPath='" + localLrlPath + '\'' +
+                ", localLrlPath='" + localLrcPath + '\'' +
+                ", isPlayable=" + isPlayable +
+                ", lrc='" + lrc + '\'' +
                 '}';
-    }
-
-    public String getMusicInf() {
-        return musicName + '-' + artistName + '-' + album + '-' + imageUrl;
     }
 }

@@ -34,7 +34,6 @@ public class CloudRequest {
                     .userAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:57.0) Gecko/20100101 Firefox/57.0")
                     .header("Accept", "*/*")
                     .header("Cache-Control", "no-cache")
-                    .header("Connection", "keep-alive")
                     .header("Host", "music.163.com")
                     .header("Accept-Language", "zh-CN,en-US;q=0.7,en;q=0.3")
                     .header("DNT", "1")
@@ -52,8 +51,6 @@ public class CloudRequest {
                 String namestring = jsonObject.getString("name");
                 String idstring = jsonObject.getString("id");
                 String artistsname = jsonObject.getJSONArray("ar").getJSONObject(0).getString("name");
-
-                //String url = " http://music.163.com/outchain/player?type=2&id="+idstring+"&auto=1&height=66&bg=e8e8e8  ";
                 String url = "http://music.163.com/song/media/outer/url?id=" + idstring + ".mp3";
                 JSONObject albumJsonObject = jsonObject.getJSONObject("al");
                 String blurPicUrlstring = null;
@@ -101,7 +98,6 @@ public class CloudRequest {
                     .userAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:57.0) Gecko/20100101 Firefox/57.0")
                     .header("Accept", "*/*")
                     .header("Cache-Control", "no-cache")
-                    .header("Connection", "keep-alive")
                     .header("Host", "music.163.com")
                     .header("Accept-Language", "zh-CN,en-US;q=0.7,en;q=0.3")
                     .header("DNT", "1")
@@ -152,7 +148,7 @@ public class CloudRequest {
                         .header("User-Agent",
                                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.9 Safari/537.36").execute().url().toString();
             } catch (Exception e) {
-                Log4jUtils.logger.error("",e);
+                Log4jUtils.logger.error("", e);
                 return url;
             }
         } else {

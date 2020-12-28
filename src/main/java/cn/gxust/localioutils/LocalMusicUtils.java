@@ -35,6 +35,7 @@ import java.util.logging.Logger;
 /**
  * <p>description: 处理本地音乐的工具类</p>
  * <p>create:2020/3/3 8:18</p>
+ *
  * @author zhaoyijie
  * @version v1.0
  */
@@ -134,34 +135,8 @@ public class LocalMusicUtils {
             playBean.setLocalMusic(true);
             playBean.setMp3Url(file.toURI().toString());
             String lrcPath = LOCAL_LRC_DIR + fileName + ".lrc";
-            playBean.setLocalLrlPath(lrcPath);//记录本地lrc文件所在位置
+            playBean.setLocalLrcPath(lrcPath);//记录本地lrc文件所在位置
             list.add(playBean);
-        }
-    }
-
-    public static void setMusicInf(PlayBean playBean, String musicPath) {
-        File file = new File(musicPath);
-        AudioFile audioFile = null;
-        try {
-            audioFile = AudioFileIO.read(file);
-        } catch (CannotReadException | IOException | TagException | ReadOnlyFileException | InvalidAudioFrameException e) {
-            Log4jUtils.logger.error("", e);
-            return;
-        }
-        Tag tag = audioFile.getTag();
-        try {
-            tag.setField(FieldKey.TITLE, playBean.getMusicName());
-            if (!playBean.getArtistName().equals("")) {
-                tag.setField(FieldKey.ARTIST, playBean.getArtistName());
-            }
-            tag.setField(FieldKey.ALBUM, playBean.getAlbum());
-        } catch (FieldDataInvalidException e) {
-            Log4jUtils.logger.error("", e);
-        }
-        try {
-            audioFile.commit();
-        } catch (CannotWriteException e) {
-            Log4jUtils.logger.error("", e);
         }
     }
 
@@ -169,7 +144,7 @@ public class LocalMusicUtils {
     /**
      * 获取嵌入音乐文件内的专辑图片
      *
-     * @param file   音乐文件file对象
+     * @param file 音乐文件file对象
      * @return a WritableImage object
      */
     public static WritableImage getLocalMusicArtwork(File file) {
@@ -282,11 +257,12 @@ public class LocalMusicUtils {
         }
         file1.delete();
     }
+
     /**
      * 说明：根据指定URL将文件下载到指定目标位置
      *
-     * @param urlPath  下载路径
-     * @param file 保存文件
+     * @param urlPath 下载路径
+     * @param file    保存文件
      * @return boolean 是否下载成功
      */
     public static boolean downloadFile(String urlPath, File file) {

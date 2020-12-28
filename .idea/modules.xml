@@ -2,9 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/FXMusicPlayer2.0.7.iml" filepath="$PROJECT_DIR$/FXMusicPlayer2.0.7.iml" />
-      <module fileurl="file://$PROJECT_DIR$/FXMusicPlayer2.0.9.iml" filepath="$PROJECT_DIR$/FXMusicPlayer2.0.9.iml" />
-      <module fileurl="file://$PROJECT_DIR$/FXMusicPlayer2.1.0.iml" filepath="$PROJECT_DIR$/FXMusicPlayer2.1.0.iml" />
+      <module fileurl="file://$PROJECT_DIR$/FXMusicPlayer2.1.4.iml" filepath="$PROJECT_DIR$/FXMusicPlayer2.1.4.iml" />
     </modules>
   </component>
 </project>

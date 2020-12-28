@@ -7,6 +7,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -16,23 +17,30 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 /**
- * <p>description:  </p>
+ * <p>description:  自定义弹框</p>
  * <p>create: 2020/12/13 11:29</p>
  *
  * @author :zhaoyijie
  */
 
-
 public class AlertStage extends Stage {
-
-    private final JFXButton okButton;
 
     private final Label headerTextLabel;
 
     private final Label contentTextLabel;
 
+    private ButtonType buttonType;
+
+    /*使用 Platform.enterNestedEventLoop 暂停执行事件处理程序和 < code>
+    Platform.exitNestedEventLoop （自JavaFX 9起可用）恢复执行：
+    private final Object PAUSE_KEY = new Object（）;
+    private void pause（）{Platform.enterNestedEventLoop（PAUSE_KEY）; }
+    private void resume（）{Platform.exitNestedEventLoop（PAUSE_KEY，null）; }
+    */
 
     public AlertStage(Stage primaryStage) {
+
+        buttonType = ButtonType.CANCEL;/*初始为取消*/
 
         this.initOwner(primaryStage);
 
@@ -50,7 +58,7 @@ public class AlertStage extends Stage {
 
         contentTextLabel = new Label();
 
-        okButton = new JFXButton("确定");
+        JFXButton okButton = new JFXButton("确定");
 
         Color color1 = Color.BLACK;
 
@@ -66,6 +74,11 @@ public class AlertStage extends Stage {
         ));
 
         okButton.setBorder(border);
+
+        okButton.setOnAction(event -> {
+            buttonType = ButtonType.OK;
+            this.hide();
+        });
 
         headerTextLabel.setGraphic(svgGlyph);
 
@@ -97,7 +110,10 @@ public class AlertStage extends Stage {
 
         this.setScene(scene);
 
-        this.setOnCloseRequest(event -> this.hide());
+        this.setOnCloseRequest(event -> {
+            buttonType = ButtonType.CANCEL;
+            this.hide();
+        });
 
         this.setResizable(false);
     }
@@ -110,7 +126,9 @@ public class AlertStage extends Stage {
         contentTextLabel.setText(text);
     }
 
-    public JFXButton getOkButton() {
-        return okButton;
+
+    public ButtonType showWaitResult() {
+        super.showAndWait();
+        return buttonType;
     }
 }

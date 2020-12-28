@@ -1,11 +1,8 @@
 package cn.gxust.ui;
 
 import javafx.geometry.Rectangle2D;
-import javafx.scene.Cursor;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -66,5 +63,21 @@ public abstract class MusicStage extends Stage {
             this.setY(event.getScreenY() - yOffSet);
             event.consume();
         });
+    }
+
+    /**
+     *
+     * @return 返回包括任务栏的整个屏幕宽度
+     */
+    public double getScreenWidth() {
+        return screenBounds.getWidth();
+    }
+
+    /**
+     *
+     * @return 返回包括任务栏的整个屏幕高度
+     */
+    public double getScreenHeight() {
+        return screenBounds.getHeight();
     }
 }

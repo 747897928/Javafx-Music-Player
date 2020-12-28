@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>cn.gxust</groupId>
-    <artifactId>FXMusicPlayer2.1.0</artifactId>
+    <artifactId>FXMusicPlayer2.1.4</artifactId>
     <version>1.0</version>
 
     <properties>
@@ -172,6 +172,14 @@
                             <mainClass>${mainClass}</mainClass>
                         </manifest>
                     </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>13</source>
+                    <target>13</target>
                 </configuration>
             </plugin>
         </plugins>

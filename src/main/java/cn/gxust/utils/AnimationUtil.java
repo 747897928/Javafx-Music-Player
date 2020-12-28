@@ -24,4 +24,21 @@ public class AnimationUtil {
         fadeTransition.setToValue(to);
         fadeTransition.play();
     }
+
+    /**
+     * 旋转动画
+     *
+     * @param node 节点
+     * @param time 持续时间
+     * @param fromAngle 起始角度
+     * @param toAngle 终点角度
+     * @param count 动画次数
+     */
+    public static void rotate(Node node, double time, double fromAngle, double toAngle, int count) {
+        RotateTransition rt = new RotateTransition(Duration.millis(time), node);
+        rt.setFromAngle(fromAngle);
+        rt.setToAngle(toAngle);
+        rt.setCycleCount(count);
+        rt.play();
+    }
 }

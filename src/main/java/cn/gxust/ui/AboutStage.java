@@ -13,8 +13,9 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 /**
- * <p>description:  </p>
+ * <p>description: 关于界面 </p>
  * <p>create: 2020/10/17 13:51</p>
+ *
  * @author zhaoyijie
  * @version v1.0
  */
@@ -36,7 +37,7 @@ public class AboutStage extends Stage {
 
         Label label = new Label(appName, imageView);
 
-        Label label1 = new Label("version 2.1.0");
+        Label label1 = new Label("version 2.1.4");
 
         Label label2 = new Label("开发者：水瓶座鬼才");
 

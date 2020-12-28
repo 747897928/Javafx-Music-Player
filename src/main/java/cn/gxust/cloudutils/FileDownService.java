@@ -32,6 +32,7 @@ import java.net.URLConnection;
 /**
  * <p>description:  </p>
  * <p>create:  2020/11/25 19:17</p>
+ *
  * @author zhaoyijie(AquariusGenius)
  */
 public class FileDownService extends Service<Number> {
@@ -82,8 +83,11 @@ public class FileDownService extends Service<Number> {
             BufferedImage bufferedImage = SwingFXUtils.fromFXImage(panImageView.getImage(), null);
             LocalMusicUtils.setMusicInf(currentPlayBean, savepath, bufferedImage);//设置MP3的头文件信息
             String musicId = currentPlayBean.getMusicId();
-            String lrcString = cloudRequest.spiderLrc(musicId);
-            if (!lrcString.contains("未找到歌词")) {
+            String lrcString = currentPlayBean.getLrc();
+            if (lrcString == null) {
+                lrcString = cloudRequest.spiderLrc(musicId);
+            }
+            if (!lrcString.contains("未找到歌词") && !lrcString.contains("无歌词")) {
                 String LrcSavePath = LocalMusicUtils.LOCAL_LRC_DIR + validateMusicName + ".lrc";
                 LrcWriteUtils.writeFile(lrcString, LrcSavePath);
             }
@@ -118,7 +122,7 @@ public class FileDownService extends Service<Number> {
         Platform.runLater(() -> {
             progressBar.setProgress(0.0D);
             service.fail(mainApp.getCurrentPlayBean().getMusicName(),
-                    "下载失败!" , mainApp.getCustomAudioParameter());
+                    "下载失败!", mainApp.getCustomAudioParameter());
             ToastState state = singleToast.getState();
             if (state == ToastState.SHOWING || state == ToastState.SHOWN) {
                 singleToast.close();

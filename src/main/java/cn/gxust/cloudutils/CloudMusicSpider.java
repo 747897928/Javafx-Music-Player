@@ -50,7 +50,6 @@ public class CloudMusicSpider {
                 try {
                     Element element = liItem;
                     Element aItem = element.selectFirst("a");
-
                     String PlayListTitle = aItem.attr("title");
                     String tmpHref = aItem.attr("href");
                     if (tmpHref.contains("javascript")) {

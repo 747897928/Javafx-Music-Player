@@ -11,23 +11,21 @@
 
 1.  发现音乐的歌单是随机获取的，可以点击发现音乐栏右边的按钮更新发现音乐栏的内容，这个操作会发送一条https请求。
 
-![主界面](https://images.gitee.com/uploads/images/2020/1205/135755_97f81e24_4822721.png "1.png")
+![主界面](https://images.gitee.com/uploads/images/2020/1228/171946_f2969c9a_4822721.png "3.png")
 
 2.  歌单列表可以是发现音乐栏里的一个，也可以是本地音乐，还可以是搜索结果后的，如果要加载本地音乐，点击本地音乐栏右边的文件夹按钮，打开本地音乐文件夹，一般这个文件夹都是相对于程序所在路径，在LocalMusic/Muisc文件夹内放音乐文件重新点击本地音乐栏就能加载本地音乐，如果需要歌词，请在LocalMusic/Lrc文件夹下放.lrc文件，注意，下载当前音乐会把音乐文件下载到LocalMusic文件夹内，lrc和音乐文件会放到对应的文件夹。
 
-![歌单列表](https://images.gitee.com/uploads/images/2020/1205/135826_e0fe6f54_4822721.png "2.png")
+![歌单列表](https://images.gitee.com/uploads/images/2020/1228/172017_be8f104e_4822721.png "4.png")
 
 3.  歌词是同步的，支持桌面歌词，让你在写代码听音乐的时候也能看到歌词。精简模式下可方便切换歌曲，播放暂停歌曲和调出or隐藏桌面歌词
 
-![歌词同步](https://images.gitee.com/uploads/images/2020/1207/172458_0442d10c_4822721.png "YJGDO0Y6MH_WC46GOF[I~UE.png")
+![歌词同步](https://images.gitee.com/uploads/images/2020/1228/172033_86a4ae3d_4822721.png "1.png")
 
 4. 其他
 
-![关于](https://images.gitee.com/uploads/images/2020/1205/140358_d3fb896b_4822721.png "4.png")
+![关于](https://images.gitee.com/uploads/images/2020/1228/172058_c181fddb_4822721.png "5.png")
 
-![表格右键弹框](https://images.gitee.com/uploads/images/2020/1213/115451_773d1765_4822721.png "3%VLSN)IT6ZAQQZMGMZV9`5.png")
-
-![精简模式](https://images.gitee.com/uploads/images/2020/1205/140419_f3adec30_4822721.png "5.png")
+![精简模式](https://images.gitee.com/uploads/images/2020/1228/172134_f1e98911_4822721.png "2.png")
 
 
 #### 说明：

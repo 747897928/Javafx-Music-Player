@@ -85,12 +85,29 @@
     -fx-pref-height: 0;
     -fx-min-height: 0;
 }
-/*.bagNode{
-    -fx-background-image: url("/images/topandbottom/background.jpg");
+.bag1Node{
+    -fx-background-image: url("/images/topandbottom/background1.png");
     -fx-background-size: stretch stretch;
     -fx-background-position: center center;
-}*/
+}
+.bag2Node{
+    -fx-background-image: url("/images/topandbottom/background2.jpg");
+    -fx-background-size: stretch stretch;
+    -fx-background-position: center center;
+}
 
+.shadowLabel{
+    -fx-background-radius: 2.0em;
+    -fx-effect: dropshadow(three-pass-box, rgb(0,0,0), 5.0,0.6, 0, 0);
+}
+
+.scroll-pane{
+    -fx-background-color:transparent;
+}
+/*让滚动区域透明*/
+.scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
 
 
 /*
