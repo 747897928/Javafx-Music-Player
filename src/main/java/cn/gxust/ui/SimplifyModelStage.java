@@ -1,6 +1,5 @@
 package cn.gxust.ui;
 
-import cn.gxust.pojo.PlayBean;
 import cn.gxust.utils.AnimationUtil;
 import com.jfoenix.controls.JFXButton;
 import com.jfoenix.controls.JFXPopup;
@@ -10,7 +9,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.TableView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -54,8 +52,6 @@ public class SimplifyModelStage extends MusicStage {
         mainHbox.setPrefSize(240, 100);
         //hBox.setAlignment(Pos.CENTER);
         mainHbox.getChildren().addAll(initLeftPane(), initCenterPane(), initRightPane());
-
-
         mainHbox.setBorder(new Border(new BorderStroke(
                 paint, paint, paint, paint,//四个边的颜色
                 BorderStrokeStyle.SOLID,//四个边的线型--实线
@@ -78,7 +74,7 @@ public class SimplifyModelStage extends MusicStage {
     }
 
     private Node initLeftPane() {
-        this.panImageView = new ImageView("/images/topandbottom/logoDark.png");
+        this.panImageView = new ImageView("/images/topandbottom/pandefault.png");
         final int PANIMAGVIEWSIZE = 70;
         this.panImageView.setFitWidth(PANIMAGVIEWSIZE);
         this.panImageView.setFitHeight(PANIMAGVIEWSIZE);

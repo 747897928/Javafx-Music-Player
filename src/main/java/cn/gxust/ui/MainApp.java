@@ -34,7 +34,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.DataFormat;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
@@ -42,9 +43,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.SVGPath;
+import javafx.scene.text.*;
 import javafx.scene.text.Font;
-import javafx.scene.text.FontPosture;
-import javafx.scene.text.FontWeight;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -52,19 +52,24 @@ import org.pomo.toasterfx.ToastBarToasterService;
 import org.pomo.toasterfx.model.ToastParameter;
 import org.pomo.toasterfx.model.impl.SingleAudio;
 
-import java.awt.*;
+import java.awt.PopupMenu;
+import java.awt.SplashScreen;
+import java.awt.TrayIcon;
+import java.awt.SystemTray;
+import javax.imageio.ImageIO;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import static javafx.scene.paint.Color.BLACK;
+import static javafx.scene.paint.Color.RED;
 
 /**
  * <p>description: 主界面</p>
@@ -75,11 +80,9 @@ import static javafx.scene.paint.Color.BLACK;
  */
 public class MainApp extends Application {
 
-    //1.全局的"舞台"对象
-    private Stage mainStage;
+    private Stage mainStage;/*全局的"舞台"对象*/
 
-    //7.歌单名称标签
-    private Label labGroupName;
+    private Label labGroupName;/* 歌单名称标签*/
 
     //8.播放列表的TableView
     private TableView<PlayBean> tableView;
@@ -96,11 +99,13 @@ public class MainApp extends Application {
     //12.下侧面板的：总时间
     private Label labTotalTime;
 
-    //13.底部歌曲封面的ImageView对象
-    private ImageView songCoverImageView;
+    private ImageView songListCoverImageView; /*歌单封面imageView*/
 
-    //14.碟片的ImageView对象
-    private ImageView panImageView;
+    private ImageView rodImageView;/*碟片磁头图片*/
+
+    private ImageView panImageView;/*碟片的ImageView对象*/
+
+    private ImageView songCoverImageView;/*底部歌曲封面的ImageView对象*/
 
     //18.当前播放模式：
     private int playMode = 1;//1 : 列表循环；2. 顺序播放  3.单曲循环
@@ -138,13 +143,13 @@ public class MainApp extends Application {
 
     private double max = 0;
 
-    private Label searchTiplabel;
+    private Label searchTiplabel;/*搜索歌曲时用来提示用户正在搜索的标签*/
 
     private CloudMusicSpider cloudMusicSpider;
 
-    private ChangeListener<Duration> changeListener;//播放进度监听器
+    private ChangeListener<Duration> changeListener;/*播放进度监听器,复用对象*/
 
-    private Runnable valueRunnable;
+    private Runnable valueRunnable;/*歌曲播放完后的操作,复用对象*/
 
     private Label singerLabel;//用来显示歌手名的label
 
@@ -162,11 +167,9 @@ public class MainApp extends Application {
 
     private JFXTabPane tabPane;
 
-    private ImageView songListCoverImageView;//歌单封面
-
     private final int PANIMAGVIEWSIZE = 200;//音乐封面Image最大大小
 
-    private final int SONGLISTCOVERIMAGEVIEWSIZE = 100;//歌单封面Image最大大小
+    private final int SONGLISTCOVERIMAGEVIEWSIZE = 120;//歌单封面Image最大大小
 
     private final int MUSICICOIMAGEVIEWSIZE = 80;//发现音乐图片大小
 
@@ -176,6 +179,7 @@ public class MainApp extends Application {
 
     private SimplifyModelStage simplifyModelStage;
 
+    /*黑色半透明提示的总控制器，由它来产生提示消息，消息位于右下角弹出*/
     private ToastBarToasterService service;
 
     private ToastParameter customAudioParameter;
@@ -192,13 +196,11 @@ public class MainApp extends Application {
 
     private MaskerPane maskerPane;
 
-    private JFXDrawer jfxDrawer;
+    private JFXDrawer jfxDrawer;/*抽屉，抽屉弹出的节点是歌单详情页*/
 
     private RotateTransition rotateTransition;
 
-    private ImageView rodImageView;
-
-    private AlertStage alertStage;
+    private AlertStage alertStage;/*删除歌曲的时候弹出的自定义弹框*/
 
     private final Font boldFont = Font.font("Timer New Roman", FontWeight.BOLD, FontPosture.ITALIC, 18);
 
@@ -208,14 +210,22 @@ public class MainApp extends Application {
 
     private boolean stopTimeline;/*是否停止t1动画，用来取消动画演示减少内存*/
 
+    private Label tagsLabel;/*歌单标签*/
+
+    private Label descLabel;/*歌单简介标签*/
+
+    private Clipboard clipboard;/*剪切板*/
+
+    private ClipboardContent clipboardContent;/*剪切板的内容*/
+
+    private JFXListView leftListView;/*左侧列表*/
+
     @Override
     public void start(Stage primaryStage) throws Exception {
-        mainStage = primaryStage;
+        this.mainStage = primaryStage;
         Image logoImage = new Image(this.getClass().getResourceAsStream("/images/topandbottom/logo.png"));
-        primaryStage.getIcons().add(logoImage);//设置logo
-        panDefaultImage = new Image("/images/topandbottom/logoDark.png");
-
-        //每隔15毫秒执行一次
+        primaryStage.getIcons().add(logoImage);//设置logo;
+        /*每隔20毫秒执行一次*/
         t1 = new Timeline(new KeyFrame(Duration.millis(20), event -> {
             lrcVBox.setLayoutY(lrcVBox.getLayoutY() - 15);
         }));
@@ -224,12 +234,14 @@ public class MainApp extends Application {
         date = new Date();
         alertStage = new AlertStage(primaryStage);
         cloudMusicSpider = new CloudMusicSpider();
-        cloudRequest = new CloudRequest();//网易云请求工具类
+        cloudRequest = new CloudRequest();
         simpleDateFormat = new SimpleDateFormat("mm:ss");
         lrcList = new ArrayList<>();
-
         service = new ToastBarToasterService();
         service.initialize();
+
+        clipboard = Clipboard.getSystemClipboard();
+        clipboardContent = new ClipboardContent();
 
         try {
             SingleAudio customAudio = new SingleAudio(this.getClass().getResource("/audio/custom.mp3"));
@@ -237,18 +249,30 @@ public class MainApp extends Application {
         } catch (Exception e) {
             customAudioParameter = ToastParameter.builder().timeout(Duration.seconds(5)).build();
         }
-        service.applyDarkTheme();
+        service.applyDarkTheme();/*使用黑色主题*/
         String appName = "WizardMusicBox";
         BorderPane mainborderPane = new BorderPane();
 
-        Background background = new Background(new BackgroundFill(Paint.valueOf("#1a3399"), null, null));
-        Paint paint = background.getFills().get(0).getFill();
+        Paint paint = Paint.valueOf("#1a3399");
+        Background background = new Background(new BackgroundFill(paint, null, null));
         BorderPane bo2 = new BorderPane();
         bo2.setLeft(getLeftPane());
         bo2.setCenter(getCenterPane(background));
+
+        lrcStage = new LrcStage(this, logoImage);
+
+        lrcStageLabel = lrcStage.getLrcStageLabel();
+
         jfxDrawer = new JFXDrawer();
+        /*弹出的位置，从下往上弹出*/
         jfxDrawer.setDirection(JFXDrawer.DrawerDirection.BOTTOM);
+        /*抽屉是以bo2节点为起始点弹出*/
         jfxDrawer.setContent(bo2);
+        /*mainborderPane.getStyleClass().add("bagNode");*/
+        /*抽屉弹出的节点为getSidePane()方法返回的节点*/
+        jfxDrawer.setSidePane(getSidePane());
+        /*抽屉的默认展开大小为屏幕的最大高度*/
+        jfxDrawer.setDefaultDrawerSize(lrcStage.getScreenHeight());
         /*隐藏歌曲详情页时暂停动画来减少资源消耗*/
         jfxDrawer.setOnDrawerClosed(event -> {
             if (mediaPlayer != null && mediaPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
@@ -289,8 +313,6 @@ public class MainApp extends Application {
                 System.out.println(rotateTransition.getStatus());
             }
         });
-        /*mainborderPane.getStyleClass().add("bagNode");*/
-        jfxDrawer.setSidePane(getSidePane());
         mainborderPane.setCenter(jfxDrawer);
 
         BorderPane bottomPane = getBottomPane();
@@ -298,12 +320,6 @@ public class MainApp extends Application {
 
         mainborderPane.setBottom(bottomPane);
 
-        lrcStage = new LrcStage(this, logoImage);
-
-        /*抽屉的默认展开大小为屏幕的最大高度*/
-        jfxDrawer.setDefaultDrawerSize(lrcStage.getScreenHeight());
-
-        lrcStageLabel = lrcStage.getLrcStageLabel();
         simplifyModelStage = new SimplifyModelStage(this, logoImage, appName, paint);
 
         TopJFXDecorator topJFXDecorator =
@@ -326,7 +342,7 @@ public class MainApp extends Application {
 
         JFXButton aboutLabel = topJFXDecorator.getAboutButton();
         aboutLabel.setTooltip(new Tooltip("关于"));//设置提示文本
-        aboutLabel.setOnMouseClicked(mouseEvent -> aboutStage.showAndWait());
+        aboutLabel.setOnMouseClicked(mouseEvent -> aboutStage.show());
 
         changeListener = initChangeListener();
         valueRunnable = initRunnable();
@@ -358,11 +374,9 @@ public class MainApp extends Application {
             }
             System.exit(0);
         });
-        //lrcStage.show();
-        //显示舞台
-        primaryStage.show();
         SplashScreen splashScreen = SplashScreen.getSplashScreen();
         if (splashScreen != null) splashScreen.close();
+        primaryStage.show();/*显示舞台*/
         changePlaylist();
     }
 
@@ -392,9 +406,7 @@ public class MainApp extends Application {
                         break;
                 }
             };
-            //java.awt.Font font = new java.awt.Font("FangSong", java.awt.Font.PLAIN, 18);
             java.awt.MenuItem preItem = new java.awt.MenuItem("prevMusic");
-
             preItem.addActionListener(actionListener);
             java.awt.MenuItem playOrPauseItem = new java.awt.MenuItem("pause/play");
             playOrPauseItem.addActionListener(actionListener);
@@ -406,9 +418,6 @@ public class MainApp extends Application {
             popupMenu.add(playOrPauseItem);
             popupMenu.add(nextItem);
             popupMenu.add(exitItem);
-            /*for (int i = 0; i < popupMenu.getItemCount(); i++) {
-                popupMenu.getItem(i).setFont(font);
-            }*/
             if (bufferedImage != null) {
                 trayIcon = new TrayIcon(bufferedImage, appName);
                 trayIcon.setImageAutoSize(true);
@@ -424,7 +433,6 @@ public class MainApp extends Application {
     //创建一个左侧面板
     private Node getLeftPane() {
         VBox vBox = new VBox();
-
         AnchorPane anchorPane = new AnchorPane();
         ImageView imageView = new ImageView("/images/topandbottom/materials.jpg");
         imageView.setFitWidth(180.0);
@@ -432,7 +440,6 @@ public class MainApp extends Application {
         imageView.setLayoutX(0);
         imageView.setLayoutY(0);
         anchorPane.setPrefHeight(imageView.getFitHeight());
-
         ImageView userView = new ImageView("/images/topandbottom/user.jpg");
         userView.setFitWidth(60.0);
         userView.setPreserveRatio(true);
@@ -454,7 +461,6 @@ public class MainApp extends Application {
         c1.radiusProperty().bind(userImgLabel.widthProperty().divide(2));
         userView.setClip(c1);
 
-
         Label userNameLabel = new Label("水瓶座鬼才");
         userNameLabel.setLayoutX(10);
         userNameLabel.setLayoutY(80);
@@ -467,8 +473,8 @@ public class MainApp extends Application {
 
         anchorPane.getChildren().addAll(imageView, userImgLabel, userNameLabel, mailLabel);
 
-        JFXListView jfxListView = new JFXListView();
-        jfxListView.setPrefWidth(180.0);
+        leftListView = new JFXListView();
+        leftListView.setPrefWidth(180.0);
         Paint paint = Paint.valueOf("#8a8a8a");
         SVGGlyph paperPlaneSvg = new SVGGlyph("M512.00404775 8C233.6469927 8 8 233.6550882 8 512.00404775s225.6469927 503.99595225 504.00404775 503.99595225 503.99595225-225.6469927 503.99595225-503.99595225S790.3530073 8 512.00404775 8z m-52.71006234 731.10014184V631.8666163l64.80479939 18.66831553z m200.99607314-64.48907292L463.45509308 613.80546622l175.71370064-207.37535864-226.73989111 192.52004231-184.10877549-55.77017709 533.35038094-258.24773264z", paint);
         paperPlaneSvg.setSize(20.0);
@@ -512,12 +518,12 @@ public class MainApp extends Application {
 
         Label downMusicLab = new Label("下载当前音乐", downSVGGlyph);
 
-        jfxListView.getItems().addAll(findMusicGd, songListGd, lrcGd, localMusiclab, downMusicLab, dirIcoLab);
+        leftListView.getItems().addAll(findMusicGd, songListGd, lrcGd, localMusiclab, downMusicLab, dirIcoLab);
 
-        jfxListView.setCellFactory(param -> {
+        leftListView.setCellFactory(param -> {
             JFXListCell jfxListCell = new JFXListCell();
             jfxListCell.setOnMouseClicked(event -> {
-                int index = jfxListView.getSelectionModel().getSelectedIndex();
+                int index = leftListView.getSelectionModel().getSelectedIndex();
                 switch (index) {
                     case 0:
                         tabPane.getSelectionModel().select(0);
@@ -535,20 +541,16 @@ public class MainApp extends Application {
                             jfxDrawer.close();
                         }
                     }
-                    ;
                     break;
                     case 3:
                         searchLocalMusic();
                         break;
                     case 4: {
-                        //创建LocalMusic文件夹
-                        LocalMusicUtils.createLocalMusicDir();
                         if (currentPlayBean != null && !currentPlayBean.isPlayable()) {
                             service.fail("操作失败！", "无法播放的音乐不能下载", customAudioParameter);
                             return;
                         }
                         if (fileDownService.isRunning()) {
-                            //Log4jUtils.logger.warn("正在下载！");
                             service.warn("警告！", "正在下载，期间不允许其他下载操作！", customAudioParameter);
                             return;
                         }
@@ -566,19 +568,10 @@ public class MainApp extends Application {
                             service.fail("操作错误", "未选择歌曲，无法下载！", customAudioParameter);
                         }
                     }
-                    ;
                     break;
-                    case 5: {
-                        //打开LocalMusic文件夹
-                        try {
-                            LocalMusicUtils.createLocalMusicDir();
-                            Desktop.getDesktop().open(new File(LocalMusicUtils.LOCAL_MUSIC_DIR));
-                        } catch (IOException e) {
-                            Log4jUtils.logger.error("", e);
-                        }
-                    }
-                    ;
-                    break;
+                    case 5:
+                        LocalMusicUtils.openLocalDir();
+                        break;
                     default:
                         break;
                 }
@@ -586,26 +579,68 @@ public class MainApp extends Application {
             return jfxListCell;
         });
 
-        vBox.getChildren().addAll(anchorPane, jfxListView);
-        //jfxListView.setDepth(4);
-        jfxListView.setVerticalGap(10.0);
-        jfxListView.setExpanded(true);
+        vBox.getChildren().addAll(anchorPane, leftListView);
+        /*leftListView.setDepth(4);*/
+        leftListView.setVerticalGap(10.0);
+        leftListView.setExpanded(true);
         Color rgb144 = Color.rgb(114, 114, 114);
         Border border = new Border(new BorderStroke(
-                rgb144, rgb144, rgb144, rgb144,//四个边的颜色
-                BorderStrokeStyle.SOLID,//四个边的线型--实线
-                BorderStrokeStyle.SOLID,
-                BorderStrokeStyle.SOLID,
-                BorderStrokeStyle.SOLID,
+                rgb144, rgb144, rgb144, rgb144,/*四个边的颜色*/
+                BorderStrokeStyle.SOLID, BorderStrokeStyle.SOLID,
+                BorderStrokeStyle.SOLID, BorderStrokeStyle.SOLID,/*四个边的线型--实线*/
                 new CornerRadii(1),
-                new BorderWidths(1),
-                null
-        ));
+                new BorderWidths(2), null));
+        Border redBorder = new Border(new BorderStroke(
+                RED, RED, RED, RED,
+                BorderStrokeStyle.SOLID, BorderStrokeStyle.SOLID,
+                BorderStrokeStyle.SOLID, BorderStrokeStyle.SOLID,
+                new CornerRadii(1),
+                new BorderWidths(2), null));
         vBox.setBorder(border);
-        vBox.setVgrow(jfxListView, Priority.ALWAYS);
+        vBox.setVgrow(leftListView, Priority.ALWAYS);
+        vBox.setOnDragOver(event -> {
+            event.acceptTransferModes(event.getTransferMode());
+            event.consume();
+        });
+        vBox.setOnDragEntered(event -> {
+            vBox.setBorder(redBorder);
+            event.consume();
+        });
+        vBox.setOnDragExited(event -> {
+            vBox.setBorder(border);
+            event.consume();
+        });
+        vBox.setOnDragDropped(event -> {
+            Dragboard dragboard = event.getDragboard();
+            if (dragboard.hasFiles()) {
+                List<File> files = dragboard.getFiles();
+                new Thread(() -> {
+                    service.info("长时间任务运行中，请耐心等待！", "开始复制音乐和lrc文件到本地音乐文件夹", customAudioParameter);
+                    int[] countArr = LocalMusicUtils.copyMusicToLocalDir(files);
+                    service.success("请手动点击本地音乐栏刷新表格！", countArr[0] + "个音乐文件，" + countArr[1] + "个lrc文件！", customAudioParameter);
+                    Platform.runLater(() -> {
+                        /**
+                         * 如果复制成功的音乐文件数是一个或者多个，并且当前歌单是本地音乐歌单表格就需要
+                         * 刷新，lrc文件更新不需要，因为lrc文件的读取是加载音乐的时候实时读取的,不过
+                         * 经过检测，新拷贝过来的文件立马用jaudiotagger读取会出现Copying Primitives
+                         * Read NumberFixed的警告，似乎复制过去的文件不能立马读取，一旦出现这些警告
+                         * 内存就上涨就有点问题，似乎不回收，也不知道存不存在内存泄漏，不知道是不是
+                         * jaudiotagger的一个bug
+                         */
+                        if (countArr[0] > 0 && labGroupName.getText().equals("本地音乐")) {
+                            searchLocalMusic();
+                        }
+                    });
+                }).start();
+                event.consume();
+            }
+        });
         return vBox;
     }
 
+    /**
+     * @return 歌单详情页
+     */
     private Node getSidePane() {
 
         StackPane s1 = new StackPane();
@@ -613,10 +648,11 @@ public class MainApp extends Application {
         iv1.setFitHeight(250);
         iv1.setFitWidth(250);
         //4.碟片的图片
-        panImageView = new ImageView("/images/topandbottom/logoDark.png");
+        panImageView = new ImageView("/images/topandbottom/pandefault.png");
         panImageView.setFitHeight(170);
         panImageView.setFitWidth(170);
         Label panLabel = new Label("", panImageView);
+        panLabel.getStyleClass().add("hoverNode");
         Circle circle2 = new Circle();
         circle2.centerXProperty().bind(panLabel.widthProperty().divide(2));
         circle2.centerYProperty().bind(panLabel.heightProperty().divide(2));
@@ -675,12 +711,12 @@ public class MainApp extends Application {
         AnchorPane lrcPane = new AnchorPane();
 
         ScrollPane scrollPane = new ScrollPane();
+        /*隐藏水平和垂直滚动条*/
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setPadding(new Insets(0, 0, 0, 0));
         scrollPane.setContent(lrcPane);
-        //scrollPane.setPrefHeight(304);
-        scrollPane.setMouseTransparent(true);//使ScrollPane不接收鼠标事件
+        scrollPane.setMouseTransparent(true);/*使ScrollPane不接收鼠标事件*/
 
         lrcPane.prefWidthProperty().bind(scrollPane.widthProperty());
         lrcPane.prefHeightProperty().bind(scrollPane.heightProperty());
@@ -690,7 +726,6 @@ public class MainApp extends Application {
         scrollPane.setPrefSize(400.0, 400.0);
         scrollPane.setLayoutX(300.0);
         scrollPane.setLayoutY(100.0);
-        //scrollPane.setStyle("-fx-background-color: transparent;");
 
         Paint paint = Paint.valueOf("#2B2B2B");
 
@@ -723,6 +758,7 @@ public class MainApp extends Application {
         anchorPane.getChildren().addAll(button, s1, rodImageView, scrollPane, sNLab, siLab, albumLabel);
         HBox h4 = new HBox();
         h4.getChildren().add(anchorPane);
+        /*把自定义布局放到hbox里面，设置居中对齐，让自定义布局在整体上始终展示在正中央*/
         h4.setAlignment(Pos.CENTER);
         h4.getStyleClass().add("bag2Node");
         return h4;
@@ -762,12 +798,55 @@ public class MainApp extends Application {
         labGroupName.setPrefHeight(25);
         labGroupName.setAlignment(Pos.CENTER_LEFT);
 
+        Paint svgPaint = Paint.valueOf("#8a8a8a");
+
+        SVGGlyph tagSvg = new SVGGlyph("M1061.726316 59.230316l2.910316 359.262316a79.225263 79.225263 0 0 1-23.174737 56.589473l-521.485474 521.485474a79.225263 79.225263 0 0 1-111.993263 0l-335.97979-335.97979a79.225263 79.225263 0 0 1 0-111.993263L593.381053 27.109053a79.225263 79.225263 0 0 1 56.643368-23.174737l359.262316 2.910316a52.816842 52.816842 0 0 1 52.331789 52.385684z m-187.122527 134.736842a52.816842 52.816842 0 1 0-74.64421 74.64421 52.816842 52.816842 0 0 0 74.64421-74.64421z", svgPaint);
+        tagSvg.setSize(15.0);
+        tagsLabel = new Label("标签：", tagSvg);
+        tagsLabel.setPrefSize(200.0, 10.0);
+        tagsLabel.setLayoutX(200);
+        tagsLabel.setLayoutY(50);
+
+        SVGGlyph descSvg = new SVGGlyph("M513.787 61.037c-248.303 0-449.593 201.29-449.593 449.593s201.29 449.593 449.593 449.593S963.38 758.933 963.38 510.63 762.091 61.037 513.787 61.037zM319.569 737.201H210.537V410.098h109.032v327.103z m490.639-297.52v52.199c0 6.954-1.502 13.628-3.951 19.9l-82.185 192.173c-8.174 19.49-27.531 33.256-50.153 33.256H428.601c-30.123 0-54.521-24.398-54.521-54.521V410.105c0-14.996 6.134-28.62 15.948-38.57l179.508-179.501 29.03 28.757c7.357 7.357 11.993 17.58 11.993 28.897 0 2.996-0.41 5.861-0.957 8.583l-26.034 124.571h172.127c30.123 0 54.521 24.398 54.521 54.521l-0.28 2.046 0.272 0.272z", svgPaint);
+        descSvg.setSize(15.0);
+        descSvg.setLayoutX(200);
+        descSvg.setLayoutY(72);
+        descLabel = new Label("介绍：");
+        descLabel.setPrefWidth(330.0);
+
+        descLabel.setWrapText(true);
+        descLabel.setLayoutX(220);
+        descLabel.setLayoutY(72);
+        descLabel.setMaxHeight(40.0);
+
+        panDefaultImage = new Image("/images/topandbottom/pandefault.png");
         songListCoverImageView = new ImageView(panDefaultImage);
         songListCoverImageView.setFitWidth(SONGLISTCOVERIMAGEVIEWSIZE);
         songListCoverImageView.setFitHeight(SONGLISTCOVERIMAGEVIEWSIZE);
 
-        songListCoverImageView.setLayoutX(30);
-        songListCoverImageView.setLayoutY(14);
+        Label songListCoverLabel = new Label("", songListCoverImageView);
+        songListCoverLabel.setLayoutX(30);
+        songListCoverLabel.setLayoutY(14);
+        songListCoverLabel.getStyleClass().add("hoverNode");
+
+        songListCoverLabel.setOnDragDetected(event -> {
+            dragToPC(songListCoverImageView);
+        });
+
+        SVGGlyph copyUrlSvg = new SVGGlyph("M339.57 697c1 0.86 1.79 1 1.16 0.46a21.38 21.38 0 0 0-2-1.18c0.27 0.27 0.56 0.52 0.84 0.72zM428.33 696.49c-0.5 0.34-1 0.75-1.45 1.13a5.06 5.06 0 0 0 0.81-0.58zM393.21 711.57c3-0.3 1.54-0.23-0.07 0h-0.28zM392.86 711.6h-0.07c-0.43 0.06-0.86 0.14-1.2 0.22 0.41-0.09 0.84-0.16 1.27-0.22zM338.73 696.32l-0.06-0.06-0.56-0.28zM317.65 668.51c0.42 1.14 1.06 1.81 0.82 1.11-0.39-0.8-0.82-1.58-1.27-2.34zM542.41 582.32a3.85 3.85 0 0 0 0.76-1.21 18.8 18.8 0 0 0-1.45 2zM552.76 564.32l-0.35 0.57a2 2 0 0 0-0.08 0.22c0.14-0.27 0.28-0.54 0.43-0.79zM429.15 696l-0.58 0.29-0.24 0.22a5.54 5.54 0 0 1 0.82-0.51zM556.72 526.64v0.94c0 0.29 0.12 0.6 0.17 0.91a15 15 0 0 1-0.17-1.85zM557 528.94l-0.09-0.45c0.05 0.3 0.09 0.59 0.11 0.88s0 0.64 0.08 1a6.14 6.14 0 0 0-0.1-1.43zM541.72 583.12l-0.08 0.09c-0.09 0.18-0.19 0.37-0.28 0.57a7.16 7.16 0 0 1 0.36-0.66zM317.2 667.28v-0.07l-0.36-0.57zM552.33 565.11c-0.42 0.77-0.8 1.59-1.16 2.43a3.83 3.83 0 0 0 0.76-1.35c0.13-0.36 0.26-0.72 0.4-1.08zM312.69 630.75c0.05-0.3 0.11-0.6 0.16-0.89s0-0.58 0-0.9a14 14 0 0 1-0.16 1.79zM375.67 711.83l-0.38-0.08zM597.65 326.45l-1 0.71c-2.73 1.92-0.1 0.16 1-0.71zM374.05 711.57h0.42c-1.73-0.22-3.61-0.32-0.42 0zM706.72 411.9l0.55-1.14a3.69 3.69 0 0 0 0.39-1.19c0 0.16-0.11 0.32-0.17 0.48-0.18 0.5-0.49 1.2-0.77 1.85zM706.72 411.9l-0.13 0.26c0 0.16-0.06 0.31-0.09 0.48a4.3 4.3 0 0 1 0.22-0.74zM512 65C265.13 65 65 265.13 65 512s200.13 447 447 447 447-200.13 447-447S758.87 65 512 65z m91.65 492.62c-3.82 26.66-17.91 49.76-36.69 68.54l-83.15 83.15C472.15 721 461 733 446.92 741.88c-32.36 20.59-74.27 23.52-109.41 8.68S275 704.24 267.1 666.7c-8.17-38.92 2.64-79.4 30-108.46 21.52-22.83 44.42-44.48 66.6-66.66 9.48-9.48 24.35-8.79 33.92 0s8.88 25 0 33.91l-2.53 2.51L356 567.12l-18.34 18.33c-1.41 1.41-2.83 2.82-4.23 4.24-1.16 1.16-2.3 2.33-3.41 3.54s-2.22 2.87-3.47 4.09l-0.45 0.63a92.07 92.07 0 0 0-6.27 10.27c-0.72 1.36-1.37 2.74-2 4.13-0.21 0.54-0.45 1.08-0.65 1.6a96.77 96.77 0 0 0-3.51 11.91c-0.3 1.33-0.55 2.66-0.8 4-0.06 3.35-0.31 3.57-0.36 2.8a97.31 97.31 0 0 0-0.29 10.66c0 1.6 0.13 3.19 0.25 4.79l0.12 1.25c0.88 3.74 1.38 7.56 2.44 11.28 0.51 1.77 1.08 3.53 1.69 5.27 0.15 0.43 0.31 0.87 0.48 1.3a14 14 0 0 1 1.29 2.41c1.27 2.53 2.35 5.22 3.79 7.62 1 1.63 2 3.23 3.05 4.79 0.46 0.68 4.1 6.28 1.93 2.78-2-3.29 0.24 0.21 0.87 0.94s1.28 1.46 1.93 2.18q1.48 1.64 3 3.19c1.39 1.38 2.81 2.72 4.28 4l1.3 1.12a11.4 11.4 0 0 1 2.06 1.24c2.51 1.65 4.92 3.71 7.46 5.17 1.62 0.93 3.27 1.82 4.95 2.65 0.27 0.14 1.27 0.61 2.22 1.06 0.6 0.25 1.32 0.55 1.64 0.67 0.87 0.31 1.74 0.62 2.61 0.91 1.75 0.59 3.52 1.12 5.29 1.61 3.26 0.88 6.6 1.31 9.87 2.06 0.67 0.07 1.34 0.13 2 0.18 1.82 0.13 3.64 0.2 5.47 0.23a97.37 97.37 0 0 0 10.53-0.43l0.35-0.05c0.4-0.06 0.79-0.11 1.16-0.18q2.71-0.48 5.39-1.13a95.25 95.25 0 0 0 10.57-3.2l0.61-0.25c3.89-2 1.62-0.71 0 0l-1.18 0.59c0.62-0.31 1.28-0.56 1.91-0.86q2.55-1.17 5-2.5a94.64 94.64 0 0 0 9.65-5.94c0.2-0.14 0.41-0.31 0.62-0.47-0.91 0.51-1 0 1.69-1.35 1.18-1 2.35-2 3.49-3.1 0.79-0.75 1.56-1.51 2.34-2.28 8.67-8.58 17.25-17.26 25.88-25.88q37.55-37.54 75.08-75.08c1.42-1.42 2.83-2.84 4.18-4.32q1.07-1.18 2.1-2.4c1.13-2.23 1.66-2.56 1.53-2.1 0.53-0.67 1.07-1.33 1.51-2a93.61 93.61 0 0 0 5.38-9.12c0.4-0.78 0.75-1.62 1.11-2.46-0.27 0.24-0.15-0.41 1.24-2.65l0.48-1.31a95 95 0 0 0 3-10.6c0.43-1.92 0.67-3.9 1.07-5.82 0-0.45 0.09-0.91 0.13-1.37a95.38 95.38 0 0 0 0.23-11c-0.05-1.5-0.15-3-0.27-4.49 0 0.77-0.3 0.57-0.36-2.76-0.6-3.16-1.27-6.29-2.16-9.38-0.64-2.21-1.36-4.41-2.15-6.57-0.18-0.49-0.41-1-0.61-1.51C550.3 507 548.75 504 547 501c-1.1-1.83-2.27-3.61-3.49-5.36-0.26-0.37-0.53-0.73-0.8-1.09-2-2.31-4-4.64-6.18-6.82-2-2-4.14-3.88-6.28-5.75a6.14 6.14 0 0 1-0.51-0.51c-0.48-0.31-1-0.6-1.29-0.83a99 99 0 0 0-11.28-6.77c-11.89-6.18-14.43-21.79-8.61-32.81 6.26-11.84 21.69-14.39 32.81-8.61a122 122 0 0 1 26.61 19c29.2 27.22 41.26 67.16 35.67 106.17z m143.22-118.87c-9.37 18.46-24.65 32.38-39.06 46.8l-32.92 32.91c-9.47 9.48-24.34 8.79-33.91 0s-8.88-25 0-33.91l2.66-2.66 37.82-37.82c3.36-3.37 6.75-6.72 10.1-10.1 1.38-1.4 2.73-2.82 4-4.29 0.47-0.53 2-2.44 2.46-3 0.58-0.81 1.15-1.6 1.3-1.83q1.39-2.06 2.69-4.18c1.68-2.77 3.13-5.63 4.55-8.53 0.53-2.82 1.14-3.28 1.07-2.59 0.49-1.36 1-2.73 1.39-4.11a93.74 93.74 0 0 0 2.65-10.69c0.07-0.35 0.13-0.69 0.19-1 0.13-1.38 0.32-2.77 0.41-4.15a95.23 95.23 0 0 0 0.08-10.95c-0.08-1.59-0.2-3.18-0.36-4.76-0.65-3.54-1.38-7-2.38-10.51q-0.76-2.66-1.68-5.27c-0.16-0.45-0.62-1.63-1-2.53-0.56-1.21-1.31-2.81-1.53-3.26-0.74-1.46-1.53-2.9-2.35-4.33-1.66-2.89-3.53-5.64-5.44-8.37l-1.12-1.35q-1.9-2.22-3.95-4.32a95 95 0 0 0-7-6.5l-0.24-0.2c-3.32-2.26-1.21-1 0 0l1.15 0.79c-0.59-0.4-1.15-0.86-1.73-1.28q-2.31-1.68-4.72-3.21a92.24 92.24 0 0 0-9.21-5.16l-1-0.5A49.63 49.63 0 0 1 665 316a90.23 90.23 0 0 0-9.3-2.6c-1.73-0.39-3.48-0.68-5.23-1l-0.59-0.07a95 95 0 0 0-10.26-0.4q-3.09 0-6.16 0.28l-1.48 0.15c-1 0.15-2.53 0.39-3 0.48-1.8 0.35-3.59 0.76-5.37 1.21a110 110 0 0 0-10.48 3.34l-0.09 0.05q-2.22 1-4.4 2.16a94.3 94.3 0 0 0-9.64 5.9c-0.34 0.23-0.66 0.46-1 0.7-0.58 1.08-2.86 2.32-3.78 3.15-1.59 1.42-3.11 2.92-4.63 4.43q-13.1 13.05-26.15 26.15l-72.61 72.61-2.43 2.46c-0.77 0.78-1.54 1.55-2.28 2.35-1.34 1.42-2.6 2.89-3.87 4.36l-0.2 0.23a95.52 95.52 0 0 0-6.09 9.57 90.25 90.25 0 0 0-2.28 4.36c-0.17 0.34-0.33 0.69-0.49 1-0.54 3.28-2.57 6.89-3.44 10.1s-1.41 6.25-2 9.4c0 0.37-0.07 0.75-0.1 1.12a90.66 90.66 0 0 0-0.31 5.47 95.11 95.11 0 0 0 0.25 10.27c0 0.38 0.07 0.76 0.11 1.14 0.37 1.51 0.48 3.2 0.79 4.7a93.43 93.43 0 0 0 2.46 9.33c0.56 1.76 1.23 3.47 1.85 5.2 0.1 0.24 0.2 0.48 0.31 0.7a94.37 94.37 0 0 0 5 9.28c1.12 1.81 2.29 3.59 3.53 5.33l0.33 0.45c2.05 2.33 4 4.68 6.24 6.88 9.48 9.48 8.79 24.34 0 33.92s-25 8.88-33.92 0a126.55 126.55 0 0 1-16.47-20.58C419 520.48 414 481.9 425.07 449c7.09-21.1 19.61-38.11 35.15-53.65l79.83-79.84c9.93-9.92 19.46-19.92 30.68-28.44 28-21.28 65.87-27.8 99.77-19.38 33.68 8.37 64.31 33 78.47 64.85 15.28 34.35 15.03 72.46-2.1 106.21zM328.07 595.22c0.16-0.23 0.2-0.27 0 0zM312.69 630.75c0 0.17-0.07 0.34-0.1 0.51a6.17 6.17 0 0 0-0.1 1.4c0-0.32 0.05-0.65 0.08-1s0.07-0.59 0.12-0.91z", BLACK);
+        copyUrlSvg.setSize(20.0);
+        ContextMenu songListCoverMenu = new ContextMenu();
+        MenuItem item1 = new MenuItem("复制歌单封面链接", copyUrlSvg);
+        item1.setOnAction(event -> {
+            clipboardContent.clear();
+            String url = songListCoverImageView.getImage().getUrl();
+            url = url.replace("?param=300y300", "");
+            clipboardContent.putString(url);
+            clipboard.setContent(clipboardContent);
+        });
+        songListCoverMenu.getItems().add(item1);
+        songListCoverLabel.setContextMenu(songListCoverMenu);
+
 
         Color color1 = Color.rgb(114, 114, 114);
 
@@ -828,9 +907,9 @@ public class MainApp extends Application {
         searchButton.setId("searchButton");
 
         AnchorPane anchorPane = new AnchorPane();
-        anchorPane.getChildren().addAll(lab1, labGroupName, songListCoverImageView,
-                lab3, filterTextField, searchButton);
-        anchorPane.setPrefHeight(150);
+        anchorPane.getChildren().addAll(lab1, labGroupName, songListCoverLabel,
+                tagsLabel, descSvg, descLabel, lab3, filterTextField, searchButton);
+        anchorPane.setPrefHeight(170);
 
         anchorPane.setBorder(border);
 
@@ -841,7 +920,6 @@ public class MainApp extends Application {
         TableColumn c1 = new TableColumn("音乐标题");
         c1.setPrefWidth(180);
         c1.setCellValueFactory(new PropertyValueFactory<>("musicName"));
-
 
         TableColumn c2 = new TableColumn("歌手");
         c2.setPrefWidth(180);
@@ -882,11 +960,12 @@ public class MainApp extends Application {
             ObservableList<PlayBean> observableList = tableView.getItems();
             if (observableList.size() != 0) {
                 TableView.TableViewSelectionModel<PlayBean> selectionModel = tableView.getSelectionModel();
-                if (selectionModel.getSelectedIndex() == -1) {
+                int selectedIndex = selectionModel.getSelectedIndex();
+                if (selectedIndex == -1) {
                     return;
                 }
-                int selectedIndex = (selectionModel.getSelectedIndex() + 1) % (observableList.size());
-                this.currentPlayBean = observableList.get(selectedIndex);
+                int nextIndex = (selectedIndex + 1) % (observableList.size());
+                this.currentPlayBean = observableList.get(nextIndex);
                 this.currentIndex = selectedIndex;
                 selectionModel.clearAndSelect(this.currentIndex);
                 simplifyTableView.getSelectionModel().clearAndSelect(this.currentIndex);
@@ -903,10 +982,6 @@ public class MainApp extends Application {
             try {
                 if (tableView.getItems().size() != 0) {
                     TableView.TableViewSelectionModel<PlayBean> selectionModel = tableView.getSelectionModel();
-                    int selectedIndex = selectionModel.getSelectedIndex();
-                    if (selectedIndex == -1) {
-                        return;
-                    }
                     PlayBean playBean = selectionModel.getSelectedItem();
                     if (playBean != null && playBean.isLocalMusic()) {
                         String osName = System.getProperty("os.name");
@@ -918,7 +993,7 @@ public class MainApp extends Application {
                             String absolutePath = new File(new URL(playBean.getMp3Url()).toURI()).getAbsolutePath();
                             Runtime.getRuntime().exec("open -R " + absolutePath);
                         } else {
-                            Desktop.getDesktop().open(new File(LocalMusicUtils.LOCAL_MUSIC_DIR));
+                            java.awt.Desktop.getDesktop().open(new File(LocalMusicUtils.LOCAL_MUSIC_DIR));
                         }
                     } else {
                         service.warn("警告", "本地音乐才有目录", customAudioParameter);
@@ -937,10 +1012,6 @@ public class MainApp extends Application {
         deleteMenuItem.setOnAction(event -> {
             if (tableView.getItems().size() != 0) {
                 TableView.TableViewSelectionModel<PlayBean> selectionModel = tableView.getSelectionModel();
-                int selectedIndex = selectionModel.getSelectedIndex();
-                if (selectedIndex == -1) {
-                    return;
-                }
                 PlayBean playBean = selectionModel.getSelectedItem();
                 if (playBean == null) {
                     return;
@@ -953,26 +1024,12 @@ public class MainApp extends Application {
                     alertStage.setContentText(playBean.getMusicName());
                     ButtonType buttonType = alertStage.showWaitResult();
                     if (buttonType == ButtonType.OK) {
-                        String mp3Url = playBean.getMp3Url();
-                        try {
-                            URL url = new URL(mp3Url);
-                            File voiceFile = new File(url.toURI());
-                            if (voiceFile.exists()) {
-                                boolean b = voiceFile.delete();
-                                if (b) {
-                                    String localLrlPath = playBean.getLocalLrcPath();
-                                    File lrcFile = new File(localLrlPath);
-                                    if (lrcFile.exists()) {
-                                        lrcFile.delete();
-                                    }
-                                    tableView.getItems().remove(playBean);
-                                    service.success("成功删除", "音乐文件名：" + playBean.getMusicName(), customAudioParameter);
-                                } else {
-                                    service.fail("错误", "删除音乐失败", customAudioParameter);
-                                }
-                            }
-                        } catch (Exception e) {
-                            Log4jUtils.logger.warn("", e);
+                        boolean b = LocalMusicUtils.deleteMusic(playBean);
+                        if (b) {
+                            tableView.getItems().remove(playBean);
+                            service.success("成功删除", "音乐文件名：" + playBean.getMusicName(), customAudioParameter);
+                        } else {
+                            service.fail("错误", "删除音乐失败", customAudioParameter);
                         }
                     }
                 } else {
@@ -990,10 +1047,8 @@ public class MainApp extends Application {
             if (observableList.size() != 0) {
                 PlayBean playBean = tableView.getSelectionModel().getSelectedItem();
                 if (playBean != null) {
-                    Clipboard clipboard = Clipboard.getSystemClipboard();
-                    clipboard.clear();
-                    ClipboardContent clipboardContent = new ClipboardContent();
-                    clipboardContent.put(DataFormat.PLAIN_TEXT, playBean.getMp3Url());
+                    clipboardContent.clear();
+                    clipboardContent.putString(playBean.getMp3Url());
                     clipboard.setContent(clipboardContent);
                 }
             }
@@ -1010,10 +1065,8 @@ public class MainApp extends Application {
             if (observableList.size() != 0) {
                 PlayBean playBean = tableView.getSelectionModel().getSelectedItem();
                 if (playBean != null) {
-                    Clipboard clipboard = Clipboard.getSystemClipboard();
-                    clipboard.clear();
-                    ClipboardContent clipboardContent = new ClipboardContent();
-                    clipboardContent.put(DataFormat.PLAIN_TEXT, playBean.getMusicInf());
+                    clipboardContent.clear();
+                    clipboardContent.putString(playBean.getMusicInf());
                     clipboard.setContent(clipboardContent);
                 }
             }
@@ -1028,18 +1081,29 @@ public class MainApp extends Application {
             if (currentPlayBean != null) {
                 String lrcString = currentPlayBean.getLrc();
                 if (lrcString != null) {
-                    Clipboard clipboard = Clipboard.getSystemClipboard();
-                    clipboard.clear();
-                    ClipboardContent clipboardContent = new ClipboardContent();
-                    clipboardContent.put(DataFormat.PLAIN_TEXT, lrcString);
+                    clipboardContent.clear();
+                    clipboardContent.putString(lrcString);
                     clipboard.setContent(clipboardContent);
                     service.success("成功", "已成功复制歌词", customAudioParameter);
                 }
             }
         });
 
+        SVGGlyph svg7 = new SVGGlyph("M511.396712 0C228.960418 0 0 228.960418 0 511.396712s228.960418 511.400325 511.396712 511.400325c282.436294 0 511.3931-228.96403 511.3931-511.400325S793.833006 0 511.396712 0zM312.344204 299.378932c46.019671 0 83.322374 37.393015 83.322374 83.521061 0 46.128046-37.302702 83.524674-83.322374 83.524674-46.016059 0-83.322374-37.396627-83.322374-83.524674C229.018218 336.768334 266.328145 299.378932 312.344204 299.378932zM850.49511 723.41088 172.309151 723.41088l-0.003613-84.727637 113.428971-83.437974 58.479193 53.587864 171.030325-195.999944 54.93894 58.916306 112.543907-146.259395 167.764623 258.171114L850.491498 723.41088z", BLACK);
+        svg7.setSize(20.0);
+        MenuItem copyImageMenuItem = new MenuItem("复制当前歌曲封面", svg7);
+
+        copyImageMenuItem.setOnAction(event -> {
+            if (currentPlayBean != null) {
+                clipboard.clear();
+                clipboardContent.clear();
+                clipboardContent.putImage(panImageView.getImage());
+                clipboard.setContent(clipboardContent);
+            }
+        });
+
         ContextMenu contextMenu = new ContextMenu();
-        contextMenu.getItems().addAll(playMenuItem, nextMenuItem, copyLinkMenuItem, openFileMenuItem, deleteMenuItem, copyObjectMenuItem, copyLrcMenuItem);
+        contextMenu.getItems().addAll(playMenuItem, nextMenuItem, copyLinkMenuItem, openFileMenuItem, deleteMenuItem, copyObjectMenuItem, copyLrcMenuItem, copyImageMenuItem);
 
         tableView.setContextMenu(contextMenu);
         simplifyTableView.setPrefHeight(260.0);
@@ -1186,7 +1250,7 @@ public class MainApp extends Application {
     }
 
     private void searchSongList(PlayListBean playListBean) {
-        if ((playListBean.getImageUrl() == null) || (playListBean.getPlayListUrl() == null)) {
+        if ((playListBean.getImageUrl() == null) || (playListBean.getPlayListId() == null)) {
             return;
         }
         this.labGroupName.setText(playListBean.getAlbum());
@@ -1202,11 +1266,12 @@ public class MainApp extends Application {
             cloudMusicSpider.getSongList(playListBean, list);
             //用GUI线程更新UI组件
             Platform.runLater(() -> {
-                songListCoverImageView.setImage(new Image(
-                        playListBean.getImageUrl(),
-                        SONGLISTCOVERIMAGEVIEWSIZE, SONGLISTCOVERIMAGEVIEWSIZE,
-                        false, false));
+                //songListCoverImageView.setImage(new Image(playListBean.getImageUrl(), SONGLISTCOVERIMAGEVIEWSIZE, SONGLISTCOVERIMAGEVIEWSIZE, false, false));
+                songListCoverImageView.setImage(new Image(playListBean.getImageUrl(), true));
+                tagsLabel.setText("标签：" + playListBean.getTags());
+                descLabel.setText("介绍：" + playListBean.getDescription());
                 tabPane.getSelectionModel().select(1);
+                leftListView.getSelectionModel().clearAndSelect(1);
                 searchTiplabel.setText("");
                 //Windows任务栏图标闪烁效果}
                 if (!mainStage.isFocused()) {
@@ -1229,16 +1294,20 @@ public class MainApp extends Application {
             //搜索歌曲
             cloudRequest.searchMusic(text, list);
             Platform.runLater(() -> {
+                tagsLabel.setText("标签：音乐");
+                String trim = text.trim();
+                descLabel.setText("介绍：" + trim);
                 searchTiplabel.setText("");
-                labGroupName.setText(text.trim());
+                labGroupName.setText(trim);
                 /*Windows任务栏图标闪烁效果}*/
                 if (!mainStage.isFocused()) {
                     mainStage.requestFocus();
                 }
                 tabPane.getSelectionModel().select(1);
+                leftListView.getSelectionModel().clearAndSelect(1);
                 if (list.size() != 0) {
-                    songListCoverImageView.setImage(new Image(list.get(0).
-                            getImageUrl(), SONGLISTCOVERIMAGEVIEWSIZE, SONGLISTCOVERIMAGEVIEWSIZE, false, false));
+                    songListCoverImageView.setImage(panDefaultImage);
+                    //songListCoverImageView.setImage(new Image(list.get(0).getImageUrl(), SONGLISTCOVERIMAGEVIEWSIZE, SONGLISTCOVERIMAGEVIEWSIZE, false, false));
                     currentIndex = 0;
                 }
             });
@@ -1259,12 +1328,15 @@ public class MainApp extends Application {
             //用GUI线程更新UI组件
             Platform.runLater(() -> {
                 songListCoverImageView.setImage(panDefaultImage);
+                tagsLabel.setText("标签：本地音乐");
+                descLabel.setText("介绍：音乐，是人生最大的快乐；音乐，是生活中的一股清泉；音乐，是陶冶性情的熔炉。");
                 /*Windows任务栏图标闪烁效果}*/
                 if (!mainStage.isFocused()) {
                     mainStage.requestFocus();
                 }
                 tableView.refresh();
                 tabPane.getSelectionModel().select(1);
+                leftListView.getSelectionModel().clearAndSelect(3);
                 searchTiplabel.setText("");
             });
             if (list.size() != 0) {
@@ -1298,12 +1370,12 @@ public class MainApp extends Application {
                     Label label = (Label) vBox.getChildren().get(1);
                     label.setText(playListBean.getAlbum());
                     if (playListBean.getImageUrl() != null) {
-                        img.setImage(new Image(playListBean.getImageUrl(),
-                                PANIMAGVIEWSIZE, PANIMAGVIEWSIZE,
+                        img.setImage(new Image(playListBean.getImageUrl(), PANIMAGVIEWSIZE, PANIMAGVIEWSIZE,
                                 false, false, true));
                     }
                 }
                 tabPane.getSelectionModel().select(0);
+                leftListView.getSelectionModel().clearAndSelect(0);
                 searchTiplabel.setText("");
             });
         }).start();
@@ -1313,6 +1385,10 @@ public class MainApp extends Application {
      * 播放音乐的方法
      */
     private void play() {
+        if (currentPlayBean == null) {
+            Log4jUtils.logger.error("currentPlayBean 为空");
+            return;
+        }
         if (mediaPlayer != null) {
             mediaPlayer.stop();
             try {
@@ -1338,10 +1414,6 @@ public class MainApp extends Application {
                 currentPlayBean.getMusicName(),
                 currentPlayBean.getArtistName()
         );
-        if (currentPlayBean == null) {
-            Log4jUtils.logger.error("currentPlayBean 为空");
-            return;
-        }
         String mp3Url = currentPlayBean.getMp3Url();
         boolean playable = currentPlayBean.isPlayable();
         if (!currentPlayBean.isLocalMusic() && playable) {
@@ -1362,12 +1434,6 @@ public class MainApp extends Application {
         new Thread(() -> mediaPlayer.play()).start();
         loadLrc();
         mediaPlayer.currentTimeProperty().addListener(changeListener);
-        boolean isSongListMusic = false; /*判断是否是歌单音乐，歌单音乐的信息一开始是不全的*/
-        if (currentPlayBean.getArtistName() != null &&
-                currentPlayBean.getArtistName().equals("")
-                && !currentPlayBean.isLocalMusic()) {
-            isSongListMusic = true;
-        }
         if (currentPlayBean.isLocalMusic()) {
             try {
                 File file = new File(new URI(mp3Url));
@@ -1379,20 +1445,15 @@ public class MainApp extends Application {
             }
         } else {
             /*backgroundLoading开启异步加载Image*/
-            /*歌单音乐将不设置图片，待最后获取到完整的音乐信息才设置*/
-            if (!isSongListMusic) {
-                try {
-                    songCoverImageView.setImage(new Image(currentPlayBean.getImageUrl(), PANIMAGVIEWSIZE, PANIMAGVIEWSIZE, false, false, true));
-                } catch (Exception e) {
-                    songCoverImageView.setImage(panDefaultImage);
-                }
-                panImageView.setImage(songCoverImageView.getImage());
+            try {
+                songCoverImageView.setImage(new Image(currentPlayBean.getImageUrl(), PANIMAGVIEWSIZE, PANIMAGVIEWSIZE, false, false, true));
+            } catch (Exception e) {
+                songCoverImageView.setImage(panDefaultImage);
             }
+            panImageView.setImage(songCoverImageView.getImage());
         }
-        if (!isSongListMusic) {
-            if (songCoverImageView.getImage() != null) {
-                simplifyModelStage.setImage(songCoverImageView.getImage());
-            }
+        if (songCoverImageView.getImage() != null) {
+            simplifyModelStage.setImage(songCoverImageView.getImage());
         }
         /*资源全部载入播放器后，这时候可以获取到总时间*/
         mediaPlayer.setOnReady(() -> {
@@ -1404,7 +1465,6 @@ public class MainApp extends Application {
             }
         });
 
-        labTotalTime.setText("00:00");
         /*在音频文件还没完整地读取之前，这时候无法获取总时间，这时候就先给个100，稍后在资源全部加载完后修改*/
         sliderSong.setMax(100);
         sliderSong.setMajorTickUnit(1);/*每次前进1格*/
@@ -1415,32 +1475,6 @@ public class MainApp extends Application {
         simplifyModelStage.changeSvgPath(PlayStatus.PAUSE);
         mediaPlayer.setVolume(sldVolume.getValue() / 100.0);
         mediaPlayer.setOnEndOfMedia(valueRunnable);
-        if (isSongListMusic) {
-            new Thread(() -> {
-                cloudRequest.getMusicDetail(currentPlayBean);
-                Platform.runLater(() -> {
-                    songNameLabel.setText(currentPlayBean.getMusicName());
-                    singerLabel.setText(currentPlayBean.getArtistName());
-                    simplifyModelStage.setSongNameAndSingerName(
-                            currentPlayBean.getMusicName(),
-                            currentPlayBean.getArtistName()
-                    );
-                    sNLab.setText(currentPlayBean.getMusicName());
-                    siLab.setText("歌手：" + currentPlayBean.getArtistName());
-                    albumLabel.setText("专辑：" + currentPlayBean.getArtistName());
-                    try {
-                        songCoverImageView.setImage(new Image(currentPlayBean.getImageUrl(), PANIMAGVIEWSIZE, PANIMAGVIEWSIZE, false, false, true));
-                    } catch (Exception e) {
-                        songCoverImageView.setImage(panDefaultImage);
-                    }
-                    if (songCoverImageView.getImage() != null) {
-                        simplifyModelStage.setImage(songCoverImageView.getImage());
-                    }
-                    panImageView.setImage(songCoverImageView.getImage());
-                    tableView.refresh();
-                });
-            }).start();
-        }
         /*碟片上的磁头图片旋转35度，过程添加动画，伪造磁头滑下读取碟片效果，200毫秒的过渡动画*/
         AnimationUtil.rotate(rodImageView, 200, 0.0, 35.0, 1);
         /*如果主界面和抽屉是打开的状态，也就是歌单详情页是展示状态就让碟片旋转动画启动，
@@ -1473,11 +1507,12 @@ public class MainApp extends Application {
             则读取本地音乐对应的lrc文件获取歌词*/
             if (!currentPlayBean.isLocalMusic()) {
                 lrcString = cloudRequest.spiderLrc(musicId);
+                /*非本地音乐的歌曲保存lrc，本地音乐的歌曲实时读取lrc文件，将不保存lrcString*/
+                currentPlayBean.setLrc(lrcString);
             } else {
                 String localLrlPath = currentPlayBean.getLocalLrcPath();
                 lrcString = LocalMusicUtils.getLrc(localLrlPath);
             }
-            currentPlayBean.setLrc(lrcString);
         } else {
             lrcString = currentPlayBean.getLrc();
         }
@@ -1551,6 +1586,9 @@ public class MainApp extends Application {
         }
     }
 
+    /**
+     * 播放暂停音乐
+     */
     public void playOrPauseMusic() {
         if (this.mediaPlayer != null) {
             //判断如果当前正在播放，暂停
@@ -1578,6 +1616,9 @@ public class MainApp extends Application {
         }
     }
 
+    /**
+     * 播放下一首音乐
+     */
     public void nextMusic() {
         if (this.tableView.getItems().size() != 0) {
             if (this.currentPlayBean != null && mediaPlayer != null) {
@@ -1669,7 +1710,6 @@ public class MainApp extends Application {
                 new CornerRadii(1), new BorderWidths(1), null));
         bottomhbox.setBorder(border);
 
-        //*************************中间滚动条部分**********************************//
         //1.上一首
         playSvg = new PlaySvg();
         Paint playPaint = Color.WHITE;
@@ -1722,6 +1762,7 @@ public class MainApp extends Application {
 
         //1.已播放的时间：
         labPlayTime = new Label("00:00");
+        labPlayTime.getStyleClass().add("hoverNode");
         //labPlayTime.setPrefWidth(40);
         labPlayTime.setTextFill(Color.WHITE);
         //2.滚动条
@@ -1747,6 +1788,7 @@ public class MainApp extends Application {
         labTotalTime = new Label("00:00");
         //labTotalTime.setPrefWidth(40);
         labTotalTime.setTextFill(Color.WHITE);
+        labTotalTime.getStyleClass().add("hoverNode");
 
         HBox hBox2 = new HBox(5);
         hBox2.getChildren().addAll(labPlayTime, sliderSong, labTotalTime);
@@ -1796,7 +1838,6 @@ public class MainApp extends Application {
         bottomPane.setMargin(sliderSongVBox, new Insets(2, 5, 2, 5));
         return bottomPane;
     }
-
 
     private ChangeListener<Duration> initChangeListener() {
         return (observable, oldValue, newValue) -> {
@@ -1934,6 +1975,38 @@ public class MainApp extends Application {
                 play();
             }
         };
+    }
+
+    /**
+     * 拖拽imageView并将imageView里的image保存到剪切板，鼠标一松将保存到本地
+     */
+    private void dragToPC(ImageView imageView) {
+        Dragboard dragboard = imageView.startDragAndDrop(TransferMode.MOVE);
+        clipboardContent.clear();
+        Image image = imageView.getImage();
+        dragboard.setDragView(image);
+        //创建临时文件
+        File file = null;
+        try {
+            file = File.createTempFile("img_", ".jpg");
+            System.out.println(file.getAbsolutePath());
+            BufferedImage bImage = SwingFXUtils.fromFXImage(image, null);
+            if (bImage != null) {
+                ImageIO.write(bImage, "jpg", file);
+                List<File> files = new ArrayList<File>();
+                files.add(file);
+                // 将文件保存到面板里面
+                clipboardContent.putFiles(files);
+                // 放入拖出内容
+                dragboard.setContent(clipboardContent);
+            } else {
+                service.fail("拖拽保存图片出现错误", "javafx.Image to BufferedImage fail!", customAudioParameter);
+            }
+            //退出时,删除临时文件
+            file.deleteOnExit();
+        } catch (Exception e) {
+            Log4jUtils.logger.error("", e);
+        }
     }
 
     /* 将匹配到的非法字符以空替换*//* '/ \ : * ? " < > |'*/

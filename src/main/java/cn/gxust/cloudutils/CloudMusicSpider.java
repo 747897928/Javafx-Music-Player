@@ -1,6 +1,9 @@
 package cn.gxust.cloudutils;
 
 import cn.gxust.utils.Log4jUtils;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -55,7 +58,7 @@ public class CloudMusicSpider {
                     if (tmpHref.contains("javascript")) {
                         continue;
                     }
-                    String PlayListUrl = "https://music.163.com" + tmpHref;
+                    String playListId = tmpHref.replace("/playlist?id=", "");
                     String imageUrl = null;
                     try {
                         Element img = element.selectFirst("img");
@@ -66,11 +69,12 @@ public class CloudMusicSpider {
                     if (imageUrl == null) {
                         continue;
                     }
+                    imageUrl = imageUrl.replace("?param=140y140", "?param=300y300");
                     if (playListBeanListIterator.hasNext()) {
                         PlayListBean playListBean = playListBeanListIterator.next();
                         playListBean.setAlbum(PlayListTitle);
                         playListBean.setImageUrl(imageUrl);
-                        playListBean.setPlayListUrl(PlayListUrl);
+                        playListBean.setPlayListId(playListId);
                     } else {
                         return;
                     }
@@ -94,27 +98,44 @@ public class CloudMusicSpider {
         if (list.size() != 0) {
             list.clear();
         }
-        String url = playListBean.getPlayListUrl().replace("#/", "");
-        String imageUrl = playListBean.getImageUrl();
-        Connection connection = Jsoup.connect(url).ignoreContentType(true);
-        //设置请求方式
-        connection.method(Connection.Method.GET);
-        connection.header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36");
-        connection.header("Referer", "http//music.163.com");
-        connection.header("Host", "music.163.com");
-        //获得响应
-        Connection.Response response = null;
+        String playListId = playListBean.getPlayListId();
         try {
-            response = connection.execute();
-            String html = response.body();
-            Document document = Jsoup.parse(html);
-            Elements ulItem = document.getElementsByClass("f-hide");
-            Elements aItems = ulItem.select("a");
-            for (Element aItem : aItems) {
-                String mp3Name = aItem.text();
-                String mp3Id = aItem.attr("href").substring(9);
-                String mp3Url = "http://music.163.com/song/media/outer/url?id=" + mp3Id + ".mp3";
-                list.add(new PlayBean(mp3Name, mp3Id, mp3Url, "", imageUrl, ""));
+            Connection.Response response = Jsoup.connect("https://music.163.com/api/playlist/detail?id=" + playListId)
+                    .userAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:57.0) Gecko/20100101 Firefox/57.0")
+                    .header("Host", "music.163.com")
+                    .method(Connection.Method.GET).ignoreContentType(true)
+                    .timeout(10000).execute();
+            String s = response.body();
+            JSONObject resultJson = JSON.parseObject(s).getJSONObject("result");
+            String description = resultJson.getString("description");
+            if (description == null) {
+                description = "该歌单无详细介绍";
+            }
+            description = description.replaceAll("[ ]|\n", "").trim();
+            playListBean.setDescription(description);
+            String tags = resultJson.getString("tags");
+            if (tags == null || tags.equals("[]")) {
+                tags = "音乐";
+            }
+            playListBean.setTags(tags);
+            JSONArray jsonArray = resultJson.getJSONArray("tracks");
+            for (int i = 0; i < jsonArray.size(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                String namestring = jsonObject.getString("name");
+                String idstring = jsonObject.getString("id");
+                String artistsname = jsonObject.getJSONArray("artists").getJSONObject(0).getString("name");
+                String url = "http://music.163.com/song/media/outer/url?id=" + idstring + ".mp3";
+                JSONObject albumJsonObject = jsonObject.getJSONObject("album");
+                String blurPicUrlstring = null;
+                try {
+                    blurPicUrlstring = albumJsonObject.getString("blurPicUrl");
+                } catch (Exception e) {
+                    Log4jUtils.logger.error("", e);
+                }
+                String album = albumJsonObject.getString("name");
+                PlayBean playBean = new PlayBean(namestring, idstring,
+                        url, artistsname, blurPicUrlstring, album);
+                list.add(playBean);
             }
         } catch (Exception e) {
             Log4jUtils.logger.error("", e);

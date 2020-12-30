@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>cn.gxust</groupId>
-    <artifactId>FXMusicPlayer2.1.4</artifactId>
+    <artifactId>FXMusicPlayer2.1.5</artifactId>
     <version>1.0</version>
 
     <properties>
@@ -143,7 +143,6 @@
             <version>1.15</version>
            <!-- <version>1.8</version>-->
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.directory.studio/org.apache.commons.lang -->
     </dependencies>
 
     <build>

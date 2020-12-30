@@ -4,7 +4,12 @@
    offsetX：水平偏移度
    offsetY：垂直偏移度*/
 /*-fx-font-style:italic*/
-.label:hover {
+/*.label:hover {
+    -fx-effect: dropshadow(three-pass-box, #cccccc, 20.0, 0.6, 0, 0);
+    -fx-background-radius: 2.0em;
+    -fx-cursor: hand;
+}*/
+.hoverNode:hover {
     -fx-effect: dropshadow(three-pass-box, #cccccc, 20.0, 0.6, 0, 0);
     -fx-background-radius: 2.0em;
     -fx-cursor: hand;
@@ -108,59 +113,3 @@
 .scroll-pane .viewport {
     -fx-background-color: transparent;
 }
-
-
-/*
-#banner{
-    -fx-background-color: #4aa3ff;
-}
-
-#closeButton{
-    -fx-graphic: url("/image/close.png") ;
-    -fx-background-color: transparent;
-}
-#closeButton:hover{
-    -fx-background-color: #D84C29;
-}
-
-#closeButton:pressed{
-    -fx-background-color: #D84C29;
-}
-
-#maxButton{
-    -fx-graphic: url("/image/max.png") ;
-    -fx-background-color: transparent;
-}
-#maxButton:hover{
-    -fx-background-color: #D84C29;
-}
-
-#maxButton:pressed{
-    -fx-background-color: #D84C29;
-}
-
-
-#minButton{
-    -fx-graphic: url("/image/min.png") ;
-    -fx-background-color: transparent;
-}
-#minButton:hover{
-    -fx-background-color: #D84C29;
-}
-
-#minButton:pressed{
-    -fx-background-color: #D84C29;
-}
-
-
-#menuButton{
-    -fx-graphic: url("/image/menu.png") ;
-    -fx-background-color: transparent;
-}
-#menuButton:hover{
-    -fx-background-color: #D84C29;
-}
-
-#menuButton:pressed{
-    -fx-background-color: #D84C29;
-}*/

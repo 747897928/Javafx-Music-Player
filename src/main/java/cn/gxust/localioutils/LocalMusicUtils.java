@@ -19,12 +19,12 @@ import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -48,6 +48,96 @@ public class LocalMusicUtils {
     static {
         Logger.getLogger("org.jaudiotagger").setLevel(Level.OFF);
         Logger.getLogger("org.jaudiotagger.audio").setLevel(Level.OFF);
+    }
+
+    /**
+     * 打开本地音乐文件夹
+     */
+    public static void openLocalDir(){
+        try {
+            LocalMusicUtils.createLocalMusicDir();
+            java.awt.Desktop.getDesktop().open(new File(LocalMusicUtils.LOCAL_MUSIC_DIR));
+        } catch (IOException e) {
+            Log4jUtils.logger.error("", e);
+        }
+    }
+    /**
+     * 将文件列表里的文件批量复制到本地音乐文件目录
+     *
+     * @param files 文件列表
+     * @return Int array, the first element is the count of successfully copied
+     * music files,and the second element is the count of successfully copied
+     * LRC files
+     */
+    public static int[] copyMusicToLocalDir(List<File> files) {
+        createLocalMusicDir();
+        int[] countArr = new int[2];
+        for (File f : files) {
+            String name = f.getName();
+            if (!name.contains(".")) {
+                continue;/*无扩展名没办法判断文件类型本次循环跳过*/
+            }
+            int i = name.lastIndexOf(".");
+            String suffix = name.substring(i).toLowerCase();
+            File file;
+            String fileType;
+            if (suffix.equals(".mp3") || suffix.equals(".wav") || suffix.equals(".m4a") || suffix.equals(".pcm")) {
+                file = new File(LOCAL_MUSIC_DIR, name);
+                fileType = "music";
+            } else if (suffix.equals(".lrc")) {
+                file = new File(LOCAL_LRC_DIR, name);
+                fileType = "lrc";
+            } else {
+                continue;
+            }
+            if (file.exists()) {
+                continue;
+            }
+            if (!f.getAbsolutePath().equals(file.getAbsolutePath())) {
+                try {
+                    Files.copy(f.toPath(), file.toPath());
+                    if (fileType.equals("music")) {
+                        countArr[0] = countArr[0] + 1;
+                    } else {
+                        countArr[1] = countArr[1] + 1;
+                    }
+                } catch (IOException e) {
+                    Log4jUtils.logger.error("", e);
+                }
+            }
+        }
+        return countArr;
+    }
+
+    /**
+     * 删除本地音乐，该操作会将音乐文件和lrc文件都一起删除
+     *
+     * @param playBean 音乐对象
+     * @return 是否删除成功
+     */
+    public static boolean deleteMusic(PlayBean playBean) {
+        if (!playBean.isLocalMusic()) {
+            return false;
+        }
+        String mp3Url = playBean.getMp3Url();
+        try {
+            URL url = new URL(mp3Url);
+            File voiceFile = new File(url.toURI());
+            if (voiceFile.exists()) {
+                boolean b = voiceFile.delete();
+                if (b) {
+                    String localLrlPath = playBean.getLocalLrcPath();
+                    File lrcFile = new File(localLrlPath);
+                    if (lrcFile.exists()) {
+                        lrcFile.delete();
+                    }
+                }
+                return b;
+            }
+        } catch (Exception e) {
+            Log4jUtils.logger.warn("", e);
+        }
+        return false;
     }
 
     /**
@@ -191,7 +281,7 @@ public class LocalMusicUtils {
         /*获取音乐封面*/
         try {
             BufferedImage artwork = tag.getFirstArtwork().getImage();
-            Graphics2D graphics = (Graphics2D) artwork.getGraphics();
+            java.awt.Graphics2D graphics = (java.awt.Graphics2D) artwork.getGraphics();
             graphics.scale((width / artwork.getWidth()), (height / artwork.getHeight()));
             graphics.drawImage(artwork, 0, 0, null);
             graphics.dispose();

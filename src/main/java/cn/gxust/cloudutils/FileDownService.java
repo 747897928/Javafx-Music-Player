@@ -136,6 +136,8 @@ public class FileDownService extends Service<Number> {
         this.singleToast = new SingleToast(toastParameter, ToastTypes.INFO, toast -> progressBarVBox);
         service.push(singleToast);
         service.info("开始下载音乐", "这过程需要一些时间，请耐心等待", mainApp.getCustomAudioParameter());
+        /*创建LocalMusic文件夹*/
+        LocalMusicUtils.createLocalMusicDir();
         super.start();
     }
 

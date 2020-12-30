@@ -29,7 +29,7 @@ public class AboutStage extends Stage {
 
         VBox vBox = new VBox(10);
 
-        ImageView imageView = new ImageView("images/topandbottom/logoDark.png");
+        ImageView imageView = new ImageView("images/topandbottom/pandefault.png");
 
         imageView.setFitWidth(30.0);
 
@@ -37,7 +37,7 @@ public class AboutStage extends Stage {
 
         Label label = new Label(appName, imageView);
 
-        Label label1 = new Label("version 2.1.4");
+        Label label1 = new Label("version 2.1.5");
 
         Label label2 = new Label("开发者：水瓶座鬼才");
 
