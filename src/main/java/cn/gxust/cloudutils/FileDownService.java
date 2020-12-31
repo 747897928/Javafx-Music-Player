@@ -101,7 +101,11 @@ public class FileDownService extends Service<Number> {
                 }
                 ToastState state = singleToast.getState();
                 if (state == ToastState.SHOWING || state == ToastState.SHOWN) {
-                    singleToast.close();
+                    try {
+                        singleToast.close();
+                    } catch (Exception e) {
+                        Log4jUtils.logger.error("", e);
+                    }
                 }
                 service.success(currentPlayBean.getMusicName(),
                         "下载成功！", mainApp.getCustomAudioParameter());
@@ -110,7 +114,11 @@ public class FileDownService extends Service<Number> {
             Log4jUtils.logger.error("", e);
             ToastState state = singleToast.getState();
             if (state == ToastState.SHOWING || state == ToastState.SHOWN) {
-                singleToast.close();
+                try {
+                    singleToast.close();
+                } catch (Exception exception) {
+                    Log4jUtils.logger.error("", e);
+                }
             }
             this.reset();
         }
