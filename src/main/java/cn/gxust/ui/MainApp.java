@@ -1518,6 +1518,7 @@ public class MainApp extends Application {
         }
         musicLrcList = lrcString.split("\n");
         for (String row : musicLrcList) {
+            row = row.trim();
             if (!row.contains("[") || !row.contains("]")) {
                 continue;
             }
@@ -1538,7 +1539,7 @@ public class MainApp extends Application {
                 totalMilli = new BigDecimal(0);
             }
             this.lrcList.add(totalMilli);
-            Label lab = new Label(row.trim().substring(row.indexOf("]") + 1));
+            Label lab = new Label(row.substring(row.indexOf("]") + 1).trim());
 
             lab.setPrefWidth(380);
             lab.setPrefHeight(30);
@@ -1548,6 +1549,7 @@ public class MainApp extends Application {
             /*判断是否是第一个歌词，如果是加粗(大号字体),如果不是就用默认字体(不加粗，小号字体)*/
             if (this.lrcVBox.getChildren().size() == 0) {
                 lab.setFont(boldFont);
+                lab.getStyleClass().add("shadowLabel");
                 lrcStageLabel.setText(lab.getText());
             } else {
                 lab.setFont(font);
