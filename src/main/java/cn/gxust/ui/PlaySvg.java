@@ -89,9 +89,10 @@ public class PlaySvg {
         closeRegion.setBackground(new Background(new BackgroundFill(paint, null, null)));
         return closeRegion;
     }
+    public enum PlayStatus {
+        PLAY,/* >*/
+        PAUSE; /* ||*/
+    }
 }
-enum PlayStatus {
-    PLAY,/* >*/
-    PAUSE; /* ||*/
-}
+
 

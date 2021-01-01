@@ -54,11 +54,9 @@ public class SimplifyModelStage extends MusicStage {
         //hBox.setAlignment(Pos.CENTER);
         mainHbox.getChildren().addAll(initLeftPane(), initCenterPane(), initRightPane());
         mainHbox.setBorder(new Border(new BorderStroke(
-                paint, paint, paint, paint,//四个边的颜色
-                BorderStrokeStyle.SOLID,//四个边的线型--实线
-                BorderStrokeStyle.SOLID,
-                BorderStrokeStyle.SOLID,
-                BorderStrokeStyle.SOLID,
+                paint, paint, paint, paint,
+                BorderStrokeStyle.SOLID, BorderStrokeStyle.SOLID,
+                BorderStrokeStyle.SOLID, BorderStrokeStyle.SOLID,
                 new CornerRadii(1), new BorderWidths(2), null)));
         mainHbox.setBackground(new Background(new BackgroundFill(Color.WHITE, new CornerRadii(20), null)));
         this.diyStage(true, 0, 80, mainHbox);
@@ -206,7 +204,7 @@ public class SimplifyModelStage extends MusicStage {
         return vBox;
     }
 
-    public void changeSvgPath(PlayStatus playStatus) {
+    public void changeSvgPath(PlaySvg.PlayStatus playStatus) {
         playSvg.changeSvgPath(playStatus);
     }
 

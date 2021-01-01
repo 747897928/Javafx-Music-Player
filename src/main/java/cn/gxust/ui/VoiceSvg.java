@@ -44,8 +44,9 @@ public class VoiceSvg {
           voiceRegion.setBackground(new Background(new BackgroundFill(paint, null, null)));
           return voiceRegion;
      }
+     public enum VoiceStatus {
+          VOICE_N,/* 有声音*/
+          VOICE_ZERO; /* |静音*/
+     }
 }
-enum VoiceStatus {
-     VOICE_N,/* 有声音*/
-     VOICE_ZERO; /* |静音*/
-}
+

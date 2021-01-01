@@ -36,15 +36,9 @@ public class PlayModeSvg {
 
     public void changeSvgPath(int playMode) {
         switch (playMode) {
-            case 1:
-                playModeRegion.setShape(repeatSvgPath);
-                break;
-            case 2:
-                playModeRegion.setShape(orderPlaySvgPath);
-                break;
-            case 3:
-                playModeRegion.setShape(repeatInOneSvgPath);
-                break;
+            case 1: playModeRegion.setShape(repeatSvgPath);break;
+            case 2: playModeRegion.setShape(orderPlaySvgPath);break;
+            case 3: playModeRegion.setShape(repeatInOneSvgPath);break;
         }
     }
 

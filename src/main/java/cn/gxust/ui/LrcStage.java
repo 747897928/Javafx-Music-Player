@@ -102,7 +102,7 @@ public class LrcStage extends MusicStage {
         this.borderPane.setTop(bo);
     }
 
-    public void changeSvgPath(PlayStatus playStatus) {
+    public void changeSvgPath(PlaySvg.PlayStatus playStatus) {
         playSvg.changeSvgPath(playStatus);
     }
 

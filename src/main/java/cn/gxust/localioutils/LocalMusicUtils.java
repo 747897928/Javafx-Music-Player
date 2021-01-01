@@ -41,6 +41,8 @@ import java.util.logging.Logger;
  */
 public class LocalMusicUtils {
 
+    public final static String LOCAL_DIR = System.getProperty("user.dir") + "/LocalMusic/";
+
     public final static String LOCAL_LRC_DIR = System.getProperty("user.dir") + "/LocalMusic/Lrc/";
 
     public final static String LOCAL_MUSIC_DIR = System.getProperty("user.dir") + "/LocalMusic/Music/";
@@ -53,14 +55,15 @@ public class LocalMusicUtils {
     /**
      * 打开本地音乐文件夹
      */
-    public static void openLocalDir(){
+    public static void openLocalDir() {
         try {
             LocalMusicUtils.createLocalMusicDir();
-            java.awt.Desktop.getDesktop().open(new File(LocalMusicUtils.LOCAL_MUSIC_DIR));
+            java.awt.Desktop.getDesktop().open(new File(LOCAL_DIR));
         } catch (IOException e) {
             Log4jUtils.logger.error("", e);
         }
     }
+
     /**
      * 将文件列表里的文件批量复制到本地音乐文件目录
      *
@@ -358,12 +361,9 @@ public class LocalMusicUtils {
     public static boolean downloadFile(String urlPath, File file) {
         try {
             Connection.Response response = Jsoup.connect(urlPath)
-                    .ignoreContentType(true)
-                    .method(Connection.Method.GET)
-                    .timeout(15000)
-                    .maxBodySize(0)
-                    .header("User-Agent",
-                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36")
+                    .ignoreContentType(true).method(Connection.Method.GET)
+                    .timeout(15000).maxBodySize(0)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36")
                     .execute();
             byte[] fileBytes = response.bodyAsBytes();
             System.out.println("文件大小：" + fileBytes.length / 1024.0f + "kb");

@@ -1080,6 +1080,9 @@ public class MainApp extends Application {
         copyLrcMenuItem.setOnAction(event -> {
             if (currentPlayBean != null) {
                 String lrcString = currentPlayBean.getLrc();
+                if (currentPlayBean.isLocalMusic()){
+                    lrcString = LocalMusicUtils.getLrc(currentPlayBean.getLocalLrcPath());
+                }
                 if (lrcString != null) {
                     clipboardContent.clear();
                     clipboardContent.putString(lrcString);
@@ -1470,9 +1473,9 @@ public class MainApp extends Application {
         sliderSong.setMajorTickUnit(1);/*每次前进1格*/
         sliderSong.setValue(0);
         prevSecond = 0;
-        playSvg.changeSvgPath(PlayStatus.PAUSE);
-        lrcStage.changeSvgPath(PlayStatus.PAUSE);
-        simplifyModelStage.changeSvgPath(PlayStatus.PAUSE);
+        playSvg.changeSvgPath(PlaySvg.PlayStatus.PAUSE);
+        lrcStage.changeSvgPath(PlaySvg.PlayStatus.PAUSE);
+        simplifyModelStage.changeSvgPath(PlaySvg.PlayStatus.PAUSE);
         mediaPlayer.setVolume(sldVolume.getValue() / 100.0);
         mediaPlayer.setOnEndOfMedia(valueRunnable);
         /*碟片上的磁头图片旋转35度，过程添加动画，伪造磁头滑下读取碟片效果，200毫秒的过渡动画*/
@@ -1598,22 +1601,22 @@ public class MainApp extends Application {
                 //设置播放器暂停
                 this.mediaPlayer.pause();
                 //设置播放按钮图标为：播放
-                playSvg.changeSvgPath(PlayStatus.PLAY);
-                lrcStage.changeSvgPath(PlayStatus.PLAY);
+                playSvg.changeSvgPath(PlaySvg.PlayStatus.PLAY);
+                lrcStage.changeSvgPath(PlaySvg.PlayStatus.PLAY);
                 AnimationUtil.rotate(rodImageView, 200, 35.0, 0.0, 1);
                 if (rotateTransition.getStatus() == Animation.Status.RUNNING) {
                     rotateTransition.pause();
                 }
-                simplifyModelStage.changeSvgPath(PlayStatus.PLAY);
+                simplifyModelStage.changeSvgPath(PlaySvg.PlayStatus.PLAY);
             } else if (this.mediaPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
                 this.mediaPlayer.play();
-                playSvg.changeSvgPath(PlayStatus.PAUSE);
-                lrcStage.changeSvgPath(PlayStatus.PAUSE);
+                playSvg.changeSvgPath(PlaySvg.PlayStatus.PAUSE);
+                lrcStage.changeSvgPath(PlaySvg.PlayStatus.PAUSE);
                 AnimationUtil.rotate(rodImageView, 200, 0.0, 35.0, 1);
                 if (rotateTransition.getStatus() != Animation.Status.RUNNING) {
                     rotateTransition.play();
                 }
-                simplifyModelStage.changeSvgPath(PlayStatus.PAUSE);
+                simplifyModelStage.changeSvgPath(PlaySvg.PlayStatus.PAUSE);
             }
         }
     }
@@ -1820,9 +1823,9 @@ public class MainApp extends Application {
                 mediaPlayer.setVolume(volumeValue / 100.0);
             }
             if (volumeValue == 0) {
-                voiceSvg.changeSvgPath(VoiceStatus.VOICE_ZERO);
+                voiceSvg.changeSvgPath(VoiceSvg.VoiceStatus.VOICE_ZERO);
             } else {
-                voiceSvg.changeSvgPath(VoiceStatus.VOICE_N);
+                voiceSvg.changeSvgPath(VoiceSvg.VoiceStatus.VOICE_N);
             }
         });
         JFXPopup jfxPopup = new JFXPopup(sldVolume);
@@ -1944,9 +1947,9 @@ public class MainApp extends Application {
                     mediaPlayer.dispose();/*释放资源*/
                     mediaPlayer = null;/*引用制空,等待gc回收*/
                 }
-                playSvg.changeSvgPath(PlayStatus.PLAY);
-                lrcStage.changeSvgPath(PlayStatus.PLAY);
-                simplifyModelStage.changeSvgPath(PlayStatus.PLAY);
+                playSvg.changeSvgPath(PlaySvg.PlayStatus.PLAY);
+                lrcStage.changeSvgPath(PlaySvg.PlayStatus.PLAY);
+                simplifyModelStage.changeSvgPath(PlaySvg.PlayStatus.PLAY);
             } else {
                 /*根据当前的播放模式选择下一首歌*/
                 switch (playMode) {
