@@ -839,7 +839,10 @@ public class MainApp extends Application {
         MenuItem item1 = new MenuItem("复制歌单封面链接", copyUrlSvg);
         item1.setOnAction(event -> {
             clipboardContent.clear();
+            /*String url = songListCoverImageView.getImage().impl_getUrl();*/
             String url = songListCoverImageView.getImage().getUrl();
+            /*jdk8 not have getUrl() in javafx.scene.image.Image
+            since jdk9 impl_getUrl() has been replaced getUrl()*/
             url = url.replace("?param=300y300", "");
             clipboardContent.putString(url);
             clipboard.setContent(clipboardContent);
@@ -1080,7 +1083,7 @@ public class MainApp extends Application {
         copyLrcMenuItem.setOnAction(event -> {
             if (currentPlayBean != null) {
                 String lrcString = currentPlayBean.getLrc();
-                if (currentPlayBean.isLocalMusic()){
+                if (currentPlayBean.isLocalMusic()) {
                     lrcString = LocalMusicUtils.getLrc(currentPlayBean.getLocalLrcPath());
                 }
                 if (lrcString != null) {
@@ -1345,7 +1348,6 @@ public class MainApp extends Application {
             if (list.size() != 0) {
                 currentIndex = 0;
             }
-            //System.gc();
         }).start();
     }
 
@@ -1963,6 +1965,7 @@ public class MainApp extends Application {
                     case 2:/*列表顺序播放*/
                         currentIndex++;
                         if (currentIndex >= tableView.getItems().size()) {
+                            currentIndex = 0;
                             return;
                         }
                         currentPlayBean = tableView.getItems().get(currentIndex);

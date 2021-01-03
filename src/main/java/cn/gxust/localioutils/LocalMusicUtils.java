@@ -20,10 +20,7 @@ import org.jsoup.Jsoup;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -57,7 +54,7 @@ public class LocalMusicUtils {
      */
     public static void openLocalDir() {
         try {
-            LocalMusicUtils.createLocalMusicDir();
+            createLocalMusicDir();
             java.awt.Desktop.getDesktop().open(new File(LOCAL_DIR));
         } catch (IOException e) {
             Log4jUtils.logger.error("", e);
@@ -67,7 +64,7 @@ public class LocalMusicUtils {
     /**
      * 将文件列表里的文件批量复制到本地音乐文件目录
      *
-     * @param files 文件列表
+     * @param files file list
      * @return Int array, the first element is the count of successfully copied
      * music files,and the second element is the count of successfully copied
      * LRC files
@@ -104,7 +101,7 @@ public class LocalMusicUtils {
                     } else {
                         countArr[1] = countArr[1] + 1;
                     }
-                } catch (IOException e) {
+                } catch (Exception e) {
                     Log4jUtils.logger.error("", e);
                 }
             }
@@ -156,12 +153,11 @@ public class LocalMusicUtils {
             lrc = "[00:00.00]无歌词";
         } else {
             try {
-                byte[] filecontent = Files.readAllBytes(Paths.get(lrcFile.toURI()));
-                lrc = new String(filecontent, StandardCharsets.UTF_8);
+                byte[] fileBytes = Files.readAllBytes(Paths.get(lrcFile.toURI()));
+                lrc = new String(fileBytes, StandardCharsets.UTF_8);
             } catch (Exception e) {
                 Log4jUtils.logger.error("", e);
                 lrc = "[00:00.00]无歌词";
-                return lrc;
             }
         }
         return lrc;
