@@ -20,6 +20,7 @@ import org.jsoup.Jsoup;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.awt.Desktop;
 import java.io.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -50,12 +51,41 @@ public class LocalMusicUtils {
     }
 
     /**
+     * 打开存放指定音乐文件的文件夹并选择这个音乐文件
+     *
+     * @param playBean 音乐对象
+     */
+    public static void openFileAndSelect(PlayBean playBean) {
+        try {
+            String osName = System.getProperty("os.name");
+            osName = osName.toLowerCase();
+            if (osName.contains("win")) {
+                String absolutePath = new File(new URL(playBean.getMp3Url()).toURI()).getAbsolutePath();
+                Runtime.getRuntime().exec("explorer /select, " + absolutePath);
+            } else if (osName.contains("mac")) {
+                String absolutePath = new File(new URL(playBean.getMp3Url()).toURI()).getAbsolutePath();
+                Runtime.getRuntime().exec("open -R " + absolutePath);
+            } else {
+                if (Desktop.isDesktopSupported()) {
+                    Desktop.getDesktop().open(new File(LOCAL_MUSIC_DIR));
+                } else {
+                    Log4jUtils.logger.warn("该操作系统不支持Desktop");
+                }
+            }
+        } catch (Exception e) {
+            Log4jUtils.logger.error("", e);
+        }
+    }
+
+    /**
      * 打开本地音乐文件夹
      */
     public static void openLocalDir() {
         try {
             createLocalMusicDir();
-            java.awt.Desktop.getDesktop().open(new File(LOCAL_DIR));
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(new File(LOCAL_DIR));
+            }
         } catch (IOException e) {
             Log4jUtils.logger.error("", e);
         }

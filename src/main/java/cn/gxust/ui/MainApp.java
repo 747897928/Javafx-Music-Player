@@ -62,7 +62,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.math.BigDecimal;
 import java.net.URI;
-import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -987,17 +986,7 @@ public class MainApp extends Application {
                     TableView.TableViewSelectionModel<PlayBean> selectionModel = tableView.getSelectionModel();
                     PlayBean playBean = selectionModel.getSelectedItem();
                     if (playBean != null && playBean.isLocalMusic()) {
-                        String osName = System.getProperty("os.name");
-                        osName = osName.toLowerCase();
-                        if (osName.contains("win")) {
-                            String absolutePath = new File(new URL(playBean.getMp3Url()).toURI()).getAbsolutePath();
-                            Runtime.getRuntime().exec("explorer /select, " + absolutePath);
-                        } else if (osName.contains("mac")) {
-                            String absolutePath = new File(new URL(playBean.getMp3Url()).toURI()).getAbsolutePath();
-                            Runtime.getRuntime().exec("open -R " + absolutePath);
-                        } else {
-                            java.awt.Desktop.getDesktop().open(new File(LocalMusicUtils.LOCAL_MUSIC_DIR));
-                        }
+                        LocalMusicUtils.openFileAndSelect(playBean);
                     } else {
                         service.warn("警告", "本地音乐才有目录", customAudioParameter);
                     }
