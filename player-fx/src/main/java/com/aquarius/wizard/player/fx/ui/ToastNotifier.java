@@ -18,6 +18,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.media.AudioClip;
 import javafx.scene.paint.Color;
 import javafx.stage.Popup;
 import javafx.stage.Screen;
@@ -45,6 +46,7 @@ public final class ToastNotifier {
 
     private final Stage ownerStage;
     private final String stylesheetUrl;
+    private final AudioClip toastAudioClip;
     private final List<ToastEntry> activeToasts = new ArrayList<>();
 
     public ToastNotifier(final Stage ownerStage) {
@@ -53,6 +55,7 @@ public final class ToastNotifier {
             ToastNotifier.class.getResource("/css/player-shell.css"),
             "player-shell.css"
         ).toExternalForm();
+        this.toastAudioClip = loadToastAudioClip();
     }
 
     public void info(final String title, final String message) {
@@ -115,12 +118,9 @@ public final class ToastNotifier {
         closeButton.setGraphic(SvgIconFactory.createIcon(AppGlyphs.CLOSE, 11.0, Color.rgb(255, 255, 255, 0.88)));
         closeButton.setFocusTraversable(false);
 
-        final Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        final HBox header = new HBox(10.0, titleLabel, spacer, closeButton);
-        header.setAlignment(Pos.TOP_LEFT);
+        final HBox header = new HBox(titleLabel);
+        header.setAlignment(Pos.CENTER_LEFT);
         header.getStyleClass().add("toast-header");
-        HBox.setMargin(closeButton, new Insets(-2.0, -2.0, 0.0, 6.0));
 
         final Label messageLabel = new Label(message == null ? "" : message);
         messageLabel.getStyleClass().add("toast-message");
@@ -129,6 +129,7 @@ public final class ToastNotifier {
         final VBox content = new VBox(6.0, header, messageLabel);
         content.setAlignment(Pos.CENTER_LEFT);
         content.getStyleClass().add("toast-copy");
+        content.setPadding(new Insets(0.0, 26.0, 0.0, 0.0));
 
         ProgressBar progressBar = null;
         if (loading) {
@@ -149,12 +150,18 @@ public final class ToastNotifier {
 
         final StackPane iconBadge = buildIconBadge(kind);
         final HBox row = new HBox(12.0, iconBadge, content);
-        row.setAlignment(Pos.TOP_LEFT);
-        row.getStyleClass().add("toast-card");
-        row.getStyleClass().add("toast-card-" + kind.cssSuffix);
-        row.setOpacity(0.0);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("toast-layout");
 
-        final StackPane surface = new StackPane(row);
+        final StackPane card = new StackPane(row, closeButton);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.getStyleClass().add("toast-card");
+        card.getStyleClass().add("toast-card-" + kind.cssSuffix);
+        card.setOpacity(0.0);
+        StackPane.setAlignment(closeButton, Pos.TOP_RIGHT);
+        StackPane.setMargin(closeButton, new Insets(10.0, 10.0, 0.0, 0.0));
+
+        final StackPane surface = new StackPane(card);
         surface.getStyleClass().add("toast-popup-shell");
         surface.getStylesheets().add(this.stylesheetUrl);
 
@@ -167,7 +174,7 @@ public final class ToastNotifier {
         final ToastEntry entry = new ToastEntry(
             popup,
             surface,
-            row,
+            card,
             messageLabel,
             progressBar,
             timeout,
@@ -208,6 +215,7 @@ public final class ToastNotifier {
         fadeIn.setFromValue(0.0);
         fadeIn.setToValue(1.0);
         fadeIn.play();
+        playToastSound(entry.kind);
 
         restartAutoClose(entry);
     }
@@ -354,6 +362,31 @@ public final class ToastNotifier {
         return prefHeight > 0.0 ? prefHeight : region.getLayoutBounds().getHeight();
     }
 
+    private AudioClip loadToastAudioClip() {
+        try {
+            final java.net.URL resource = ToastNotifier.class.getResource("/audio/custom.mp3");
+            if (resource == null) {
+                return null;
+            }
+            final AudioClip clip = new AudioClip(resource.toExternalForm());
+            clip.setVolume(0.72);
+            return clip;
+        } catch (Exception exception) {
+            return null;
+        }
+    }
+
+    private void playToastSound(final ToastKind kind) {
+        if (kind == ToastKind.LOADING || this.toastAudioClip == null) {
+            return;
+        }
+        try {
+            this.toastAudioClip.play();
+        } catch (Exception exception) {
+            // Audio feedback is optional; keep toast display resilient if media init fails.
+        }
+    }
+
     private void runOnFxThread(final Runnable action) {
         if (Platform.isFxApplicationThread()) {
             action.run();
@@ -438,7 +471,7 @@ public final class ToastNotifier {
 
         private final Popup popup;
         private final StackPane surface;
-        private final HBox card;
+        private final StackPane card;
         private final Label messageLabel;
         private final ProgressBar progressBar;
         private final Duration timeout;
@@ -453,7 +486,7 @@ public final class ToastNotifier {
         private ToastEntry(
             final Popup popup,
             final StackPane surface,
-            final HBox card,
+            final StackPane card,
             final Label messageLabel,
             final ProgressBar progressBar,
             final Duration timeout,

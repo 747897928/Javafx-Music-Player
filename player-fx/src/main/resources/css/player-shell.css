@@ -1163,6 +1163,10 @@
     -fx-max-width: 320px;
 }
 
+.toast-layout {
+    -fx-alignment: center-left;
+}
+
 .toast-card-info {
     -fx-border-color: rgba(106, 155, 255, 0.34);
 }
