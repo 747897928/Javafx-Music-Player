@@ -344,6 +344,19 @@
     -fx-effect: dropshadow(gaussian, rgba(35, 56, 124, 0.18), 22, 0.16, 0, 10);
 }
 
+.playlist-cover-draggable:hover {
+    -fx-border-color: rgba(112, 166, 255, 0.8);
+    -fx-border-width: 2px;
+    -fx-border-radius: 18px;
+}
+
+.playlist-cover-dragging {
+    -fx-border-color: rgba(255, 92, 92, 0.96);
+    -fx-border-width: 2px;
+    -fx-border-radius: 18px;
+    -fx-effect: dropshadow(gaussian, rgba(255, 92, 92, 0.26), 28, 0.18, 0, 10);
+}
+
 .playlist-cover-image {
     -fx-opacity: 0.96;
 }
@@ -772,6 +785,10 @@
     -fx-border-radius: 10px;
 }
 
+.desktop-lyric-body {
+    -fx-alignment: center-left;
+}
+
 .desktop-lyric-toolbar {
     -fx-background-color: rgba(0, 0, 0, 0.12);
     -fx-background-radius: 10px 10px 0 0;
@@ -781,6 +798,7 @@
     -fx-text-fill: white;
     -fx-font-size: 18px;
     -fx-font-weight: 900;
+    -fx-alignment: center-left;
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.7), 12, 0.24, 0, 2);
     -fx-background-color: rgba(0, 0, 0, 0.12);
     -fx-background-radius: 20px;

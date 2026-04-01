@@ -10,6 +10,7 @@ import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
@@ -53,6 +54,7 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
 import java.awt.Desktop;
+import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -68,6 +70,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import javax.imageio.ImageIO;
 
 /**
  * First-stage desktop shell that migrates the old main window structure into
@@ -529,6 +533,27 @@ public final class PlayerShellView {
         this.playlistCoverImageView.setPreserveRatio(false);
         this.playlistCoverImageView.setClip(createRoundedClip(136.0, 136.0, 18.0));
         this.playlistCoverMark.getStyleClass().add("playlist-cover-mark");
+        this.playlistCover.getStyleClass().add("playlist-cover-draggable");
+        this.playlistCover.setCursor(Cursor.OPEN_HAND);
+        this.playlistCover.setOnDragDetected(event -> {
+            beginPlaylistCoverExportDrag();
+            event.consume();
+        });
+        this.playlistCover.setOnDragDone(event -> {
+            this.playlistCover.getStyleClass().remove("playlist-cover-dragging");
+            this.playlistCover.setCursor(Cursor.OPEN_HAND);
+            event.consume();
+        });
+        final ContextMenu playlistCoverMenu = new ContextMenu();
+        final MenuItem copyCoverLinkItem = createMenuItem("复制歌单封面链接", AppGlyphs.LINK);
+        copyCoverLinkItem.setOnAction(event -> copyPlaylistCoverLink());
+        playlistCoverMenu.getItems().setAll(copyCoverLinkItem);
+        playlistCoverMenu.setOnShowing(event -> copyCoverLinkItem.setDisable(resolvePlaylistCoverUrl().isBlank()));
+        this.playlistCover.setOnContextMenuRequested(event -> {
+            playlistCoverMenu.show(this.playlistCover, event.getScreenX(), event.getScreenY());
+            event.consume();
+        });
+        Tooltip.install(this.playlistCover, new Tooltip("拖拽封面到系统保存图片，右键复制封面链接"));
         this.playlistCover.getChildren().setAll(this.playlistCoverImageView, this.playlistCoverMark);
 
         final VBox meta = new VBox(10.0);
@@ -1269,6 +1294,80 @@ public final class PlayerShellView {
         showInformation("复制成功", "已复制当前歌曲封面。");
     }
 
+    private void copyPlaylistCoverLink() {
+        final String coverLink = resolvePlaylistCoverUrl();
+        if (coverLink.isBlank()) {
+            showWarning("无法复制链接", "当前歌单没有可用的封面链接。");
+            return;
+        }
+        this.clipboardContent.clear();
+        this.clipboardContent.putString(coverLink);
+        this.clipboard.setContent(this.clipboardContent);
+        showInformation("复制成功", "已复制歌单封面链接。");
+    }
+
+    private void beginPlaylistCoverExportDrag() {
+        final Image coverImage = this.playlistCoverImageView.getImage();
+        if (coverImage == null) {
+            showWarning("无法拖拽保存", "当前歌单没有可用封面。");
+            return;
+        }
+        try {
+            final BufferedImage bufferedImage = SwingFXUtils.fromFXImage(coverImage, null);
+            if (bufferedImage == null) {
+                showWarning("无法拖拽保存", "当前封面尚未完成加载。");
+                return;
+            }
+            final Path temporaryImagePath = Files.createTempFile(
+                sanitizeFileSegment(this.activePlaylist == null ? "wizard-playlist-cover" : this.activePlaylist.title()),
+                ".png"
+            );
+            ImageIO.write(bufferedImage, "png", temporaryImagePath.toFile());
+            temporaryImagePath.toFile().deleteOnExit();
+
+            final Dragboard dragboard = this.playlistCover.startDragAndDrop(TransferMode.COPY);
+            dragboard.setDragView(coverImage);
+            final ClipboardContent dragContent = new ClipboardContent();
+            dragContent.putFiles(List.of(temporaryImagePath.toFile()));
+            dragboard.setContent(dragContent);
+            this.playlistCover.getStyleClass().add("playlist-cover-dragging");
+            this.playlistCover.setCursor(Cursor.CLOSED_HAND);
+        } catch (IOException exception) {
+            showWarning("无法拖拽保存", "导出歌单封面到临时文件时发生异常。");
+        }
+    }
+
+    private String resolvePlaylistCoverUrl() {
+        if (this.activePlaylist != null) {
+            if (this.activePlaylist.coverImageUrl() != null && !this.activePlaylist.coverImageUrl().isBlank()) {
+                return normalizePlaylistCoverUrl(this.activePlaylist.coverImageUrl());
+            }
+            if (this.activePlaylist.songs() != null && !this.activePlaylist.songs().isEmpty()) {
+                final SongSummary firstSong = this.activePlaylist.songs().get(0);
+                if (firstSong.artworkUrl() != null && !firstSong.artworkUrl().isBlank()) {
+                    return normalizePlaylistCoverUrl(firstSong.artworkUrl());
+                }
+            }
+        }
+        final Image playlistCoverImage = this.playlistCoverImageView.getImage();
+        if (playlistCoverImage == null || playlistCoverImage.getUrl() == null || playlistCoverImage.getUrl().isBlank()) {
+            return "";
+        }
+        return normalizePlaylistCoverUrl(playlistCoverImage.getUrl());
+    }
+
+    private String normalizePlaylistCoverUrl(final String url) {
+        return url == null ? "" : url.replace("?param=300y300", "").trim();
+    }
+
+    private String sanitizeFileSegment(final String sourceValue) {
+        if (sourceValue == null || sourceValue.isBlank()) {
+            return "wizard-playlist-cover";
+        }
+        final String sanitizedValue = sourceValue.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+        return sanitizedValue.isBlank() ? "wizard-playlist-cover" : sanitizedValue;
+    }
+
     private void importLocalFiles() {
         final FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("导入本地音乐与歌词");
@@ -1288,10 +1387,14 @@ public final class PlayerShellView {
         if (files == null || files.isEmpty()) {
             return;
         }
-        this.toastNotifier.info("长时间任务运行中，请耐心等待！", "开始复制音乐和 lrc 文件到本地音乐文件夹。");
+        final ToastNotifier.LoadingHandle loadingHandle = this.toastNotifier.loading(
+            "长时间任务运行中，请耐心等待！",
+            "开始复制音乐和 lrc 文件到本地音乐文件夹。"
+        );
         CompletableFuture
             .supplyAsync(() -> this.localLibraryService.importFiles(files))
             .thenAccept(importResult -> Platform.runLater(() -> {
+                loadingHandle.close();
                 if (importResult.musicCount() > 0) {
                     showPlaylist(loadLocalLibrary(), this.localMusicNavButton);
                 } else {
@@ -1311,7 +1414,10 @@ public final class PlayerShellView {
                 }
             }))
             .exceptionally(throwable -> {
-                Platform.runLater(() -> this.toastNotifier.fail("导入失败", "复制音乐或歌词文件时发生异常。"));
+                Platform.runLater(() -> {
+                    loadingHandle.close();
+                    this.toastNotifier.fail("导入失败", "复制音乐或歌词文件时发生异常。");
+                });
                 return null;
             });
     }
@@ -1329,23 +1435,31 @@ public final class PlayerShellView {
             showWarning("无法下载", "当前歌曲来源不支持 legacy 下载。");
             return;
         }
-        this.toastNotifier.info("开始下载音乐", "这过程需要一些时间，请耐心等待。");
+        final SongSummary downloadSong = this.currentSong;
+        final ToastNotifier.LoadingHandle loadingHandle = this.toastNotifier.loading(
+            "开始下载音乐",
+            "这过程需要一些时间，请耐心等待。"
+        );
         CompletableFuture
             .supplyAsync(() -> this.legacyOnlineMusicService.downloadSong(
-                this.currentSong,
+                downloadSong,
                 this.localLibraryService.localMusicDirectory(),
                 this.localLibraryService.localLyricDirectory()
             ))
             .thenAccept(downloadResult -> Platform.runLater(() -> {
+                loadingHandle.close();
                 if (downloadResult.success()) {
                     refreshLocalLibraryView();
-                    this.toastNotifier.success(this.currentSong.title(), downloadResult.message());
+                    this.toastNotifier.success(downloadSong.title(), downloadResult.message());
                 } else {
                     this.toastNotifier.fail("下载失败", downloadResult.message());
                 }
             }))
             .exceptionally(throwable -> {
-                Platform.runLater(() -> this.toastNotifier.fail("下载失败", "legacy 下载流程执行失败。"));
+                Platform.runLater(() -> {
+                    loadingHandle.close();
+                    this.toastNotifier.fail("下载失败", "legacy 下载流程执行失败。");
+                });
                 return null;
             });
     }

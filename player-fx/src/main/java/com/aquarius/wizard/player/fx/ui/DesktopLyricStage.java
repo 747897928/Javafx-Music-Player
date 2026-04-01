@@ -174,10 +174,13 @@ public final class DesktopLyricStage extends Stage {
 
     private StackPane buildLyricBody() {
         final StackPane body = new StackPane();
+        body.getStyleClass().add("desktop-lyric-body");
+        body.setAlignment(Pos.CENTER_LEFT);
         body.setPadding(new Insets(6.0, 18.0, 16.0, 18.0));
         this.lyricLabel.getStyleClass().add("desktop-lyric-label");
         this.lyricLabel.setAlignment(Pos.CENTER_LEFT);
         this.lyricLabel.setMaxWidth(Double.MAX_VALUE);
+        StackPane.setAlignment(this.lyricLabel, Pos.CENTER_LEFT);
         body.getChildren().add(this.lyricLabel);
         return body;
     }
