@@ -763,6 +763,7 @@
     -fx-border-color: rgba(82, 116, 255, 0.4);
     -fx-border-radius: 6px;
     -fx-background-radius: 6px;
+    -fx-font-family: "Microsoft YaHei UI", "Yu Gothic UI", "PingFang SC", "Microsoft YaHei", "Segoe UI";
 }
 
 .mini-player-playlist-menu .menu-item,
@@ -770,6 +771,10 @@
 .mini-player-playlist-menu .custom-menu-item:focused {
     -fx-background-color: transparent;
     -fx-padding: 0;
+}
+
+.mini-player-playlist-menu .label {
+    -fx-font-family: "Microsoft YaHei UI", "Yu Gothic UI", "PingFang SC", "Microsoft YaHei", "Segoe UI";
 }
 
 .mini-player-playlist-item-label {
