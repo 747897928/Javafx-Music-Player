@@ -107,6 +107,15 @@
     -fx-border-width: 0 1px 0 0;
 }
 
+.sidebar-import-drag-over {
+    -fx-border-color: rgba(255, 92, 92, 0.96);
+    -fx-border-width: 2px;
+    -fx-border-radius: 18px;
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(247, 248, 251, 0.92), rgba(241, 244, 251, 0.92)),
+        rgba(255, 92, 92, 0.04);
+}
+
 .sidebar-hero {
     -fx-background-color: linear-gradient(to bottom, rgba(28, 48, 118, 0.2), rgba(28, 48, 118, 0.08));
     -fx-background-image: url("/images/topandbottom/materials.jpg");
@@ -615,16 +624,16 @@
     -fx-border-color: rgba(255, 255, 255, 0.12);
     -fx-border-radius: 18px;
     -fx-effect: dropshadow(gaussian, rgba(5, 10, 26, 0.34), 18, 0.14, 0, 6);
-    -fx-min-width: 40px;
-    -fx-pref-width: 40px;
-    -fx-padding: 0 8px 0 8px;
+    -fx-min-width: 34px;
+    -fx-pref-width: 34px;
+    -fx-padding: 6px 7px 6px 7px;
 }
 
 .volume-slider-wrapper {
     -fx-background-color: transparent;
-    -fx-min-width: 18px;
-    -fx-pref-width: 18px;
-    -fx-max-width: 18px;
+    -fx-min-width: 14px;
+    -fx-pref-width: 14px;
+    -fx-max-width: 14px;
     -fx-min-height: 98px;
     -fx-pref-height: 98px;
     -fx-max-height: 98px;
@@ -663,7 +672,7 @@
 .volume-slider .track {
     -fx-background-color: rgba(255, 255, 255, 0.16);
     -fx-background-radius: 999px;
-    -fx-pref-width: 4px;
+    -fx-pref-width: 3px;
     -fx-background-insets: 0;
 }
 

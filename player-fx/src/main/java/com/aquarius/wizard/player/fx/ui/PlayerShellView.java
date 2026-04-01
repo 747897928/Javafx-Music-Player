@@ -1545,15 +1545,18 @@ public final class PlayerShellView {
             if (hasImportableFiles(event.getDragboard())) {
                 event.acceptTransferModes(TransferMode.COPY);
                 this.root.getStyleClass().add("app-frame-drag-over");
+                this.sidebar.getStyleClass().add("sidebar-import-drag-over");
             }
             event.consume();
         });
         dragTarget.setOnDragExited(event -> {
             this.root.getStyleClass().remove("app-frame-drag-over");
+            this.sidebar.getStyleClass().remove("sidebar-import-drag-over");
             event.consume();
         });
         dragTarget.setOnDragDropped(event -> {
             this.root.getStyleClass().remove("app-frame-drag-over");
+            this.sidebar.getStyleClass().remove("sidebar-import-drag-over");
             final Dragboard dragboard = event.getDragboard();
             if (hasImportableFiles(dragboard)) {
                 importLocalFiles(dragboard.getFiles().stream().map(java.io.File::toPath).toList(), false);
@@ -1698,7 +1701,6 @@ public final class PlayerShellView {
         volumeContent.getStyleClass().add("volume-popup-content");
         volumeContent.setAlignment(Pos.CENTER);
         volumeContent.setFillWidth(false);
-        VBox.setMargin(sliderWrapper, new Insets(14.0, 0.0, 14.0, 0.0));
         final CustomMenuItem sliderItem = new CustomMenuItem(volumeContent, false);
         sliderItem.getStyleClass().add("volume-popup-item");
         this.volumePopup.getStyleClass().add("volume-popup-menu");
@@ -1712,7 +1714,7 @@ public final class PlayerShellView {
             this.volumePopup.hide();
             return;
         }
-        this.volumePopup.show(this.volumeButton, Side.TOP, 0.0, 8.0);
+        this.volumePopup.show(this.volumeButton, Side.TOP, 0.0, 2.0);
     }
 
     private void updateVolumeButtonIcon() {
