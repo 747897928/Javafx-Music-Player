@@ -59,11 +59,6 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.gitee.pomo</groupId>
-            <artifactId>toasterfx</artifactId>
-            <version>1.0.2</version>
-        </dependency>
-        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
         </dependency>

@@ -1140,3 +1140,131 @@
 .legacy-dialog-button:hover {
     -fx-opacity: 0.94;
 }
+
+.toast-popup-shell {
+    -fx-padding: 0;
+}
+
+.toast-card {
+    -fx-alignment: center-left;
+    -fx-background-color: rgba(24, 28, 42, 0.95);
+    -fx-background-radius: 14px;
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-border-radius: 14px;
+    -fx-padding: 12px 14px 12px 14px;
+    -fx-effect: dropshadow(gaussian, rgba(9, 14, 28, 0.34), 26, 0.2, 0, 8);
+    -fx-min-width: 320px;
+    -fx-pref-width: 320px;
+    -fx-max-width: 320px;
+}
+
+.toast-card-info {
+    -fx-border-color: rgba(106, 155, 255, 0.34);
+}
+
+.toast-card-success {
+    -fx-border-color: rgba(99, 224, 161, 0.34);
+}
+
+.toast-card-warn {
+    -fx-border-color: rgba(255, 199, 100, 0.34);
+}
+
+.toast-card-fail {
+    -fx-border-color: rgba(255, 120, 120, 0.34);
+}
+
+.toast-card-loading {
+    -fx-border-color: rgba(120, 155, 255, 0.34);
+}
+
+.toast-header {
+    -fx-alignment: center-left;
+}
+
+.toast-copy {
+    -fx-alignment: center-left;
+}
+
+.toast-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-text-fill: white;
+}
+
+.toast-message {
+    -fx-font-size: 13px;
+    -fx-line-spacing: 2px;
+    -fx-text-fill: rgba(232, 239, 255, 0.86);
+}
+
+.toast-icon-badge {
+    -fx-background-radius: 999px;
+    -fx-min-width: 34px;
+    -fx-pref-width: 34px;
+    -fx-max-width: 34px;
+    -fx-min-height: 34px;
+    -fx-pref-height: 34px;
+    -fx-max-height: 34px;
+    -fx-alignment: center;
+}
+
+.toast-icon-badge-info {
+    -fx-background-color: linear-gradient(to bottom, #5d87ff, #4060dc);
+}
+
+.toast-icon-badge-success {
+    -fx-background-color: linear-gradient(to bottom, #4fd48e, #2aaa6d);
+}
+
+.toast-icon-badge-warn {
+    -fx-background-color: linear-gradient(to bottom, #f3bf58, #cf9832);
+}
+
+.toast-icon-badge-fail {
+    -fx-background-color: linear-gradient(to bottom, #ff8585, #d25555);
+}
+
+.toast-icon-badge-loading {
+    -fx-background-color: linear-gradient(to bottom, #74a2ff, #4c6cff);
+}
+
+.toast-icon-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+    -fx-text-fill: white;
+}
+
+.toast-close-button {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-radius: 999px;
+    -fx-padding: 0;
+    -fx-min-width: 24px;
+    -fx-pref-width: 24px;
+    -fx-max-width: 24px;
+    -fx-min-height: 24px;
+    -fx-pref-height: 24px;
+    -fx-max-height: 24px;
+    -fx-cursor: hand;
+}
+
+.toast-close-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.16);
+}
+
+.toast-progress {
+    -fx-pref-height: 5px;
+    -fx-max-width: Infinity;
+    -fx-accent: #76cfff;
+}
+
+.toast-progress > .track {
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-background-radius: 999px;
+}
+
+.toast-progress > .bar {
+    -fx-background-color: linear-gradient(to right, #7ea8ff, #70d4ff);
+    -fx-background-radius: 999px;
+    -fx-background-insets: 0;
+}

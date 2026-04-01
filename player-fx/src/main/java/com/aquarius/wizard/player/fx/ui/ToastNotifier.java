@@ -1,179 +1,363 @@
 package com.aquarius.wizard.player.fx.ui;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
+import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
+import javafx.stage.Popup;
+import javafx.stage.Screen;
+import javafx.stage.Stage;
 import javafx.util.Duration;
-import org.pomo.toasterfx.ToastBarToasterService;
-import org.pomo.toasterfx.model.ToastParameter;
-import org.pomo.toasterfx.model.ToastState;
-import org.pomo.toasterfx.model.impl.SingleToast;
-import org.pomo.toasterfx.model.impl.SingleAudio;
-import org.pomo.toasterfx.model.impl.ToastTypes;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Thin wrapper around ToasterFX so the rebuilt client can keep the old
- * non-blocking feedback style without spreading third-party details around the
- * UI layer.
+ * Project-local toast layer used by the rebuilt desktop shell.
  */
 public final class ToastNotifier {
 
-    private final ToastBarToasterService toasterService = new ToastBarToasterService();
-    private final ToastParameter defaultParameter;
+    private static final Duration DEFAULT_TIMEOUT = Duration.seconds(4.6);
+    private static final Duration FADE_DURATION = Duration.millis(170.0);
+    private static final double EDGE_GAP = 18.0;
+    private static final double STACK_GAP = 12.0;
 
-    public ToastNotifier() {
-        this.toasterService.initialize();
-        this.toasterService.applyDarkTheme();
-        this.defaultParameter = createDefaultParameter();
+    private final Stage ownerStage;
+    private final String stylesheetUrl;
+    private final List<ToastEntry> activeToasts = new ArrayList<>();
+
+    public ToastNotifier(final Stage ownerStage) {
+        this.ownerStage = Objects.requireNonNull(ownerStage, "ownerStage");
+        this.stylesheetUrl = Objects.requireNonNull(
+            ToastNotifier.class.getResource("/css/player-shell.css"),
+            "player-shell.css"
+        ).toExternalForm();
     }
 
     public void info(final String title, final String message) {
-        this.toasterService.info(title, message, this.defaultParameter);
+        showToast(ToastKind.INFO, title, message, DEFAULT_TIMEOUT);
     }
 
     public void success(final String title, final String message) {
-        this.toasterService.success(title, message, this.defaultParameter);
+        showToast(ToastKind.SUCCESS, title, message, DEFAULT_TIMEOUT);
     }
 
     public void warn(final String title, final String message) {
-        this.toasterService.warn(title, message, this.defaultParameter);
+        showToast(ToastKind.WARN, title, message, DEFAULT_TIMEOUT);
     }
 
     public void fail(final String title, final String message) {
-        this.toasterService.fail(title, message, this.defaultParameter);
+        showToast(ToastKind.FAIL, title, message, DEFAULT_TIMEOUT);
     }
 
     public LoadingHandle loading(final String title, final String message) {
-        final Label titleLabel = new Label(title);
-        titleLabel.setTextFill(Color.WHITE);
-        titleLabel.setFont(Font.font("Microsoft YaHei", 16.0));
-
-        final Label messageLabel = new Label(message);
-        messageLabel.setTextFill(Color.WHITE);
-        messageLabel.setWrapText(true);
-        messageLabel.setFont(Font.font("Microsoft YaHei", 13.0));
-
-        final ProgressBar progressBar = new ProgressBar(ProgressBar.INDETERMINATE_PROGRESS);
-        progressBar.setMaxWidth(Double.MAX_VALUE);
-
-        final VBox content = new VBox(titleLabel, messageLabel, progressBar);
-        content.setSpacing(4.0);
-        content.setPadding(new Insets(4.0, 6.0, 4.0, 6.0));
-
-        final SingleToast toast = new SingleToast(this.defaultParameter, ToastTypes.INFO, ignored -> content);
-        this.toasterService.push(toast);
-        return new LoadingHandle(toast, messageLabel, progressBar);
+        return callOnFxThread(() -> {
+            final ToastEntry entry = createToastEntry(ToastKind.LOADING, title, message, null, true);
+            showEntry(entry);
+            return new LoadingHandle(entry);
+        });
     }
 
     public void destroy() {
-        this.toasterService.destroy();
+        runOnFxThread(() -> {
+            final List<ToastEntry> entries = new ArrayList<>(this.activeToasts);
+            for (final ToastEntry entry : entries) {
+                hideEntry(entry, false);
+            }
+            this.activeToasts.clear();
+        });
     }
 
-    private ToastParameter createDefaultParameter() {
-        try {
-            final SingleAudio customAudio = new SingleAudio(
-                ToastNotifier.class.getResource("/audio/custom.mp3")
-            );
-            return ToastParameter.builder()
-                .audio(customAudio)
-                .timeout(Duration.seconds(5.0))
-                .build();
-        } catch (Exception exception) {
-            return ToastParameter.builder()
-                .timeout(Duration.seconds(5.0))
-                .build();
+    private void showToast(final ToastKind kind, final String title, final String message, final Duration timeout) {
+        runOnFxThread(() -> showEntry(createToastEntry(kind, title, message, timeout, false)));
+    }
+
+    private ToastEntry createToastEntry(
+        final ToastKind kind,
+        final String title,
+        final String message,
+        final Duration timeout,
+        final boolean loading
+    ) {
+        final Label titleLabel = new Label(title == null ? "" : title);
+        titleLabel.getStyleClass().add("toast-title");
+
+        final Button closeButton = new Button();
+        closeButton.getStyleClass().add("toast-close-button");
+        closeButton.setGraphic(SvgIconFactory.createIcon(AppGlyphs.CLOSE, 11.0, Color.rgb(255, 255, 255, 0.88)));
+
+        final Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        final HBox header = new HBox(10.0, titleLabel, spacer, closeButton);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.getStyleClass().add("toast-header");
+
+        final Label messageLabel = new Label(message == null ? "" : message);
+        messageLabel.getStyleClass().add("toast-message");
+        messageLabel.setWrapText(true);
+
+        final VBox content = new VBox(6.0, header, messageLabel);
+        content.setAlignment(Pos.CENTER_LEFT);
+        content.getStyleClass().add("toast-copy");
+
+        ProgressBar progressBar = null;
+        if (loading) {
+            progressBar = new ProgressBar(ProgressBar.INDETERMINATE_PROGRESS);
+            progressBar.getStyleClass().add("toast-progress");
+            progressBar.setMaxWidth(Double.MAX_VALUE);
+            VBox.setMargin(progressBar, new Insets(4.0, 0.0, 0.0, 0.0));
+            content.getChildren().add(progressBar);
+        }
+
+        final StackPane iconBadge = buildIconBadge(kind);
+        final HBox row = new HBox(12.0, iconBadge, content);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("toast-card");
+        row.getStyleClass().add("toast-card-" + kind.cssSuffix);
+        row.setOpacity(0.0);
+
+        final StackPane surface = new StackPane(row);
+        surface.getStyleClass().add("toast-popup-shell");
+        surface.getStylesheets().add(this.stylesheetUrl);
+
+        final Popup popup = new Popup();
+        popup.setAutoFix(true);
+        popup.setAutoHide(false);
+        popup.setHideOnEscape(false);
+        popup.getContent().setAll(surface);
+
+        final ToastEntry entry = new ToastEntry(popup, surface, row, messageLabel, progressBar, timeout);
+        closeButton.setOnAction(event -> hideEntry(entry, true));
+        return entry;
+    }
+
+    private StackPane buildIconBadge(final ToastKind kind) {
+        final Label symbolLabel = new Label(kind.symbol);
+        symbolLabel.getStyleClass().add("toast-icon-label");
+
+        final StackPane badge = new StackPane(symbolLabel);
+        badge.getStyleClass().add("toast-icon-badge");
+        badge.getStyleClass().add("toast-icon-badge-" + kind.cssSuffix);
+        return badge;
+    }
+
+    private void showEntry(final ToastEntry entry) {
+        if (entry == null || entry.closed.get()) {
+            return;
+        }
+        if (!this.ownerStage.isShowing()) {
+            return;
+        }
+        this.activeToasts.add(entry);
+        entry.popup.show(this.ownerStage, 0.0, 0.0);
+        entry.surface.applyCss();
+        entry.surface.layout();
+        relayoutToasts();
+
+        final FadeTransition fadeIn = new FadeTransition(FADE_DURATION, entry.card);
+        fadeIn.setFromValue(0.0);
+        fadeIn.setToValue(1.0);
+        fadeIn.play();
+
+        if (entry.timeout != null) {
+            entry.autoCloseTransition = new PauseTransition(entry.timeout);
+            entry.autoCloseTransition.setOnFinished(event -> hideEntry(entry, true));
+            entry.autoCloseTransition.play();
         }
     }
 
-    public static final class LoadingHandle {
+    private void hideEntry(final ToastEntry entry, final boolean animate) {
+        if (entry == null || !entry.closed.compareAndSet(false, true)) {
+            return;
+        }
+        if (entry.autoCloseTransition != null) {
+            entry.autoCloseTransition.stop();
+        }
+        if (!entry.popup.isShowing()) {
+            this.activeToasts.remove(entry);
+            return;
+        }
+        if (!animate) {
+            entry.popup.hide();
+            this.activeToasts.remove(entry);
+            relayoutToasts();
+            return;
+        }
+        final FadeTransition fadeOut = new FadeTransition(FADE_DURATION, entry.card);
+        fadeOut.setFromValue(entry.card.getOpacity());
+        fadeOut.setToValue(0.0);
+        fadeOut.setOnFinished(event -> {
+            entry.popup.hide();
+            this.activeToasts.remove(entry);
+            relayoutToasts();
+        });
+        fadeOut.play();
+    }
 
-        private final SingleToast toast;
-        private final Label messageLabel;
-        private final ProgressBar progressBar;
+    private void relayoutToasts() {
+        if (this.activeToasts.isEmpty()) {
+            return;
+        }
+        final Rectangle2D visualBounds = resolveToastBounds();
+        double currentY = visualBounds.getMaxY() - EDGE_GAP;
+        final List<ToastEntry> visibleEntries = this.activeToasts.stream()
+            .filter(entry -> entry.popup.isShowing())
+            .sorted(Comparator.comparingInt(this.activeToasts::indexOf).reversed())
+            .toList();
+
+        for (final ToastEntry entry : visibleEntries) {
+            entry.surface.applyCss();
+            entry.surface.layout();
+            final double toastWidth = resolvePrefWidth(entry.surface);
+            final double toastHeight = resolvePrefHeight(entry.surface);
+            final double popupX = Math.max(visualBounds.getMinX() + EDGE_GAP, visualBounds.getMaxX() - toastWidth - EDGE_GAP);
+            currentY -= toastHeight;
+            final double popupY = Math.max(visualBounds.getMinY() + EDGE_GAP, currentY);
+            entry.popup.setX(popupX);
+            entry.popup.setY(popupY);
+            currentY = popupY - STACK_GAP;
+        }
+    }
+
+    private Rectangle2D resolveToastBounds() {
+        final List<Screen> screens = Screen.getScreensForRectangle(
+            this.ownerStage.getX(),
+            this.ownerStage.getY(),
+            Math.max(this.ownerStage.getWidth(), 1.0),
+            Math.max(this.ownerStage.getHeight(), 1.0)
+        );
+        return screens.isEmpty() ? Screen.getPrimary().getVisualBounds() : screens.get(0).getVisualBounds();
+    }
+
+    private double resolvePrefWidth(final Region region) {
+        final double prefWidth = region.prefWidth(-1.0);
+        return prefWidth > 0.0 ? prefWidth : region.getLayoutBounds().getWidth();
+    }
+
+    private double resolvePrefHeight(final Region region) {
+        final double prefHeight = region.prefHeight(-1.0);
+        return prefHeight > 0.0 ? prefHeight : region.getLayoutBounds().getHeight();
+    }
+
+    private void runOnFxThread(final Runnable action) {
+        if (Platform.isFxApplicationThread()) {
+            action.run();
+            return;
+        }
+        Platform.runLater(action);
+    }
+
+    private <T> T callOnFxThread(final java.util.function.Supplier<T> supplier) {
+        if (Platform.isFxApplicationThread()) {
+            return supplier.get();
+        }
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<T> result = new AtomicReference<>();
+        Platform.runLater(() -> {
+            try {
+                result.set(supplier.get());
+            } finally {
+                latch.countDown();
+            }
+        });
+        try {
+            latch.await(5L, TimeUnit.SECONDS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
+        return result.get();
+    }
+
+    public final class LoadingHandle {
+
+        private final ToastEntry entry;
         private final AtomicBoolean closeRequested = new AtomicBoolean(false);
-        private ChangeListener<ToastState> closeListener;
 
-        private LoadingHandle(final SingleToast toast, final Label messageLabel, final ProgressBar progressBar) {
-            this.toast = toast;
-            this.messageLabel = messageLabel;
-            this.progressBar = progressBar;
+        private LoadingHandle(final ToastEntry entry) {
+            this.entry = entry;
         }
 
         public void updateMessage(final String message) {
-            if (message == null) {
+            if (message == null || this.entry == null) {
                 return;
             }
-            Platform.runLater(() -> this.messageLabel.setText(message));
+            runOnFxThread(() -> this.entry.messageLabel.setText(message));
         }
 
         public void updateProgress(final double progressValue) {
-            Platform.runLater(() -> this.progressBar.setProgress(progressValue));
+            if (this.entry == null || this.entry.progressBar == null) {
+                return;
+            }
+            runOnFxThread(() -> this.entry.progressBar.setProgress(progressValue));
         }
 
         public void close() {
-            if (!this.closeRequested.compareAndSet(false, true)) {
+            if (this.entry == null || !this.closeRequested.compareAndSet(false, true)) {
                 return;
             }
-            Platform.runLater(this::closeWhenSafe);
+            runOnFxThread(() -> hideEntry(this.entry, true));
         }
+    }
 
-        private void closeWhenSafe() {
-            final ToastState state = this.toast.getState();
-            if (state == ToastState.SHOWN) {
-                closeQuietly();
-                return;
-            }
-            if (state == ToastState.CLOSING
-                || state == ToastState.DESTROY
-                || state == ToastState.HIDE
-                || state == ToastState.ARCHIVE
-                || state == ToastState.ARCHIVING) {
-                removeCloseListener();
-                return;
-            }
-            if (this.closeListener != null) {
-                return;
-            }
-            this.closeListener = (observable, oldState, newState) -> {
-                if (newState == ToastState.SHOWN) {
-                    removeCloseListener();
-                    closeQuietly();
-                    return;
-                }
-                if (newState == ToastState.CLOSING
-                    || newState == ToastState.DESTROY
-                    || newState == ToastState.HIDE
-                    || newState == ToastState.ARCHIVE
-                    || newState == ToastState.ARCHIVING) {
-                    removeCloseListener();
-                }
-            };
-            this.toast.getStateProperty().addListener(this.closeListener);
+    private enum ToastKind {
+        INFO("i", "info"),
+        SUCCESS("✓", "success"),
+        WARN("!", "warn"),
+        FAIL("×", "fail"),
+        LOADING("…", "loading");
+
+        private final String symbol;
+        private final String cssSuffix;
+
+        ToastKind(final String symbol, final String cssSuffix) {
+            this.symbol = symbol;
+            this.cssSuffix = cssSuffix;
         }
+    }
 
-        private void closeQuietly() {
-            removeCloseListener();
-            try {
-                this.toast.close();
-            } catch (IllegalArgumentException ignored) {
-                // ToasterFX refuses to close while SHOWING; listener-based retry handles it.
-            }
-        }
+    private static final class ToastEntry {
 
-        private void removeCloseListener() {
-            if (this.closeListener == null) {
-                return;
-            }
-            this.toast.getStateProperty().removeListener(this.closeListener);
-            this.closeListener = null;
+        private final Popup popup;
+        private final StackPane surface;
+        private final HBox card;
+        private final Label messageLabel;
+        private final ProgressBar progressBar;
+        private final Duration timeout;
+        private final AtomicBoolean closed = new AtomicBoolean(false);
+        private PauseTransition autoCloseTransition;
+
+        private ToastEntry(
+            final Popup popup,
+            final StackPane surface,
+            final HBox card,
+            final Label messageLabel,
+            final ProgressBar progressBar,
+            final Duration timeout
+        ) {
+            this.popup = popup;
+            this.surface = surface;
+            this.card = card;
+            this.messageLabel = messageLabel;
+            this.progressBar = progressBar;
+            this.timeout = timeout;
         }
     }
 }
-

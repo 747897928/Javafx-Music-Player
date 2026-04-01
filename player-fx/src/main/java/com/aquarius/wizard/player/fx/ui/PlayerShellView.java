@@ -86,7 +86,7 @@ public final class PlayerShellView {
     private final LegacyLocalLibraryService localLibraryService = new LegacyLocalLibraryService();
     private final LegacyOnlineMusicService legacyOnlineMusicService = new LegacyOnlineMusicService();
     private final SystemTrayBridge systemTrayBridge = new SystemTrayBridge("WizardMusicBox");
-    private final ToastNotifier toastNotifier = new ToastNotifier();
+    private final ToastNotifier toastNotifier;
     private final MiniPlayerStage miniPlayerStage;
     private final DesktopLyricStage desktopLyricStage;
     private final ArtworkImageLoader artworkImageLoader = new ArtworkImageLoader();
@@ -156,6 +156,7 @@ public final class PlayerShellView {
 
     public PlayerShellView(final Stage stage) {
         this.stage = stage;
+        this.toastNotifier = new ToastNotifier(stage);
         this.miniPlayerStage = new MiniPlayerStage(stage);
         this.desktopLyricStage = new DesktopLyricStage(stage);
         this.activePlaylist = this.discoverPlaylists.get(0);
