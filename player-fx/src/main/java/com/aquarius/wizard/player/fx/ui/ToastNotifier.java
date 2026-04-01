@@ -1,6 +1,7 @@
 package com.aquarius.wizard.player.fx.ui;
 
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
@@ -14,6 +15,8 @@ import org.pomo.toasterfx.model.ToastState;
 import org.pomo.toasterfx.model.impl.SingleToast;
 import org.pomo.toasterfx.model.impl.SingleAudio;
 import org.pomo.toasterfx.model.impl.ToastTypes;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Thin wrapper around ToasterFX so the rebuilt client can keep the old
@@ -94,6 +97,8 @@ public final class ToastNotifier {
         private final SingleToast toast;
         private final Label messageLabel;
         private final ProgressBar progressBar;
+        private final AtomicBoolean closeRequested = new AtomicBoolean(false);
+        private ChangeListener<ToastState> closeListener;
 
         private LoadingHandle(final SingleToast toast, final Label messageLabel, final ProgressBar progressBar) {
             this.toast = toast;
@@ -113,12 +118,61 @@ public final class ToastNotifier {
         }
 
         public void close() {
-            Platform.runLater(() -> {
-                final ToastState state = this.toast.getState();
-                if (state == ToastState.SHOWING || state == ToastState.SHOWN) {
-                    this.toast.close();
+            if (!this.closeRequested.compareAndSet(false, true)) {
+                return;
+            }
+            Platform.runLater(this::closeWhenSafe);
+        }
+
+        private void closeWhenSafe() {
+            final ToastState state = this.toast.getState();
+            if (state == ToastState.SHOWN) {
+                closeQuietly();
+                return;
+            }
+            if (state == ToastState.CLOSING
+                || state == ToastState.DESTROY
+                || state == ToastState.HIDE
+                || state == ToastState.ARCHIVE
+                || state == ToastState.ARCHIVING) {
+                removeCloseListener();
+                return;
+            }
+            if (this.closeListener != null) {
+                return;
+            }
+            this.closeListener = (observable, oldState, newState) -> {
+                if (newState == ToastState.SHOWN) {
+                    removeCloseListener();
+                    closeQuietly();
+                    return;
                 }
-            });
+                if (newState == ToastState.CLOSING
+                    || newState == ToastState.DESTROY
+                    || newState == ToastState.HIDE
+                    || newState == ToastState.ARCHIVE
+                    || newState == ToastState.ARCHIVING) {
+                    removeCloseListener();
+                }
+            };
+            this.toast.getStateProperty().addListener(this.closeListener);
+        }
+
+        private void closeQuietly() {
+            removeCloseListener();
+            try {
+                this.toast.close();
+            } catch (IllegalArgumentException ignored) {
+                // ToasterFX refuses to close while SHOWING; listener-based retry handles it.
+            }
+        }
+
+        private void removeCloseListener() {
+            if (this.closeListener == null) {
+                return;
+            }
+            this.toast.getStateProperty().removeListener(this.closeListener);
+            this.closeListener = null;
         }
     }
 }

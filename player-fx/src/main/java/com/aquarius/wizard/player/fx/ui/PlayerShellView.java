@@ -1693,10 +1693,12 @@ public final class PlayerShellView {
 
         final StackPane sliderWrapper = new StackPane(this.volumeSlider);
         sliderWrapper.getStyleClass().add("volume-slider-wrapper");
+        sliderWrapper.setPickOnBounds(false);
         final VBox volumeContent = new VBox(sliderWrapper);
         volumeContent.getStyleClass().add("volume-popup-content");
         volumeContent.setAlignment(Pos.CENTER);
-        VBox.setMargin(sliderWrapper, new Insets(16.0, 0.0, 16.0, 0.0));
+        volumeContent.setFillWidth(false);
+        VBox.setMargin(sliderWrapper, new Insets(14.0, 0.0, 14.0, 0.0));
         final CustomMenuItem sliderItem = new CustomMenuItem(volumeContent, false);
         sliderItem.getStyleClass().add("volume-popup-item");
         this.volumePopup.getStyleClass().add("volume-popup-menu");
