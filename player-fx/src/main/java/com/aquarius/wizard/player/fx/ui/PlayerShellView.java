@@ -1685,16 +1685,15 @@ public final class PlayerShellView {
         this.volumeSlider.setShowTickMarks(false);
         this.volumeSlider.setShowTickLabels(false);
         this.volumeSlider.setValue(50.0);
+        this.volumeSlider.setMinHeight(0.0);
+        this.volumeSlider.setPrefWidth(30.0);
         this.volumeSlider.getStyleClass().add("volume-slider");
         this.volumeSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
             this.playbackService.setVolume(newValue.doubleValue() / 100.0);
             updateVolumeButtonIcon();
         });
 
-        final StackPane sliderWrapper = new StackPane(this.volumeSlider);
-        sliderWrapper.getStyleClass().add("volume-slider-wrapper");
-        sliderWrapper.setPickOnBounds(false);
-        final VBox volumeContent = new VBox(sliderWrapper);
+        final VBox volumeContent = new VBox(this.volumeSlider);
         volumeContent.getStyleClass().add("volume-popup-content");
         volumeContent.setAlignment(Pos.CENTER);
         volumeContent.setFillWidth(false);
@@ -1711,7 +1710,7 @@ public final class PlayerShellView {
             this.volumePopup.hide();
             return;
         }
-        this.volumePopup.show(this.volumeButton, Side.TOP, 0.0, 2.0);
+        this.volumePopup.show(this.volumeButton, Side.BOTTOM, -5.0, -35.0);
     }
 
     private void updateVolumeButtonIcon() {
