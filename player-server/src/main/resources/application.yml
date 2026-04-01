@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: wizard-music-server
+  datasource:
+    url: jdbc:sqlite:${player.storage.root}/${player.storage.database-file-name}
+    driver-class-name: org.sqlite.JDBC
+
+server:
+  port: 18080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+mybatis-plus:
+  global-config:
+    banner: false
+  configuration:
+    map-underscore-to-camel-case: true
+
+player:
+  storage:
+    root: ./runtime
+    database-file-name: musicbox.db
+    music-directory: library/music
+    lyrics-directory: library/lyrics
+    covers-directory: library/covers
+    cache-directory: cache
