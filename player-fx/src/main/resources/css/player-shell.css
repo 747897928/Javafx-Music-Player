@@ -87,8 +87,13 @@
 }
 
 .window-button {
-    -fx-font-size: 13px;
-    -fx-padding: 7px 12px 7px 12px;
+    -fx-padding: 0;
+    -fx-min-width: 38px;
+    -fx-pref-width: 38px;
+    -fx-max-width: 38px;
+    -fx-min-height: 38px;
+    -fx-pref-height: 38px;
+    -fx-max-height: 38px;
 }
 
 .top-icon-button:hover,
@@ -1236,20 +1241,22 @@
 }
 
 .toast-close-button {
-    -fx-background-color: rgba(255, 255, 255, 0.08);
-    -fx-background-radius: 999px;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
     -fx-padding: 0;
-    -fx-min-width: 24px;
-    -fx-pref-width: 24px;
-    -fx-max-width: 24px;
-    -fx-min-height: 24px;
-    -fx-pref-height: 24px;
-    -fx-max-height: 24px;
+    -fx-min-width: 18px;
+    -fx-pref-width: 18px;
+    -fx-max-width: 18px;
+    -fx-min-height: 18px;
+    -fx-pref-height: 18px;
+    -fx-max-height: 18px;
     -fx-cursor: hand;
+    -fx-opacity: 0.76;
 }
 
 .toast-close-button:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.16);
+    -fx-background-color: transparent;
+    -fx-opacity: 1;
 }
 
 .toast-progress {

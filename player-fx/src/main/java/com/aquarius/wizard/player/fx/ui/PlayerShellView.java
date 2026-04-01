@@ -126,6 +126,9 @@ public final class PlayerShellView {
     private final Button volumeButton = roundControl("");
     private final Button miniModeButton = roundControl("");
     private final Button moreActionsButton = roundControl("");
+    private Button minimizeWindowButton;
+    private Button maximizeWindowButton;
+    private Button closeWindowButton;
     private final VerticalVolumeBar volumeSlider = new VerticalVolumeBar();
     private final Popup volumePopup = new Popup();
 
@@ -312,10 +315,14 @@ public final class PlayerShellView {
 
         final HBox windowControls = new HBox(10.0);
         windowControls.setAlignment(Pos.CENTER_RIGHT);
+        this.minimizeWindowButton = windowButton(AppGlyphs.WINDOW_MINIMIZE, 10.5, () -> this.stage.setIconified(true));
+        this.maximizeWindowButton = windowButton(AppGlyphs.WINDOW_MAXIMIZE, 10.5, this::toggleMaximized);
+        this.closeWindowButton = windowButton(AppGlyphs.CLOSE, 9.0, this::requestExit);
+        updateWindowControlIcons();
         windowControls.getChildren().addAll(
-            windowButton("—", () -> this.stage.setIconified(true)),
-            windowButton("□", this::toggleMaximized),
-            windowButton("✕", this::requestExit)
+            this.minimizeWindowButton,
+            this.maximizeWindowButton,
+            this.closeWindowButton
         );
 
         topBar.getChildren().addAll(brandBox, this.searchField, searchButton, spacer, topActions, windowControls);
@@ -1743,12 +1750,29 @@ public final class PlayerShellView {
         return button;
     }
 
-    private Button windowButton(final String text, final Runnable action) {
-        final Button button = new Button(text);
+    private Button windowButton(final String glyphPath, final double size, final Runnable action) {
+        final Button button = new Button();
         button.getStyleClass().add("window-button");
+        button.setGraphic(SvgIconFactory.createIcon(glyphPath, size, Color.WHITE));
         button.setOnAction(event -> action.run());
+        button.setFocusTraversable(false);
         MaterialButtonFeedback.install(button);
         return button;
+    }
+
+    private void updateWindowControlIcons() {
+        if (this.minimizeWindowButton != null) {
+            this.minimizeWindowButton.setGraphic(
+                SvgIconFactory.createIcon(AppGlyphs.WINDOW_MINIMIZE, 10.5, Color.WHITE)
+            );
+        }
+        if (this.maximizeWindowButton != null) {
+            final String glyph = this.windowMaximized ? AppGlyphs.WINDOW_RESTORE : AppGlyphs.WINDOW_MAXIMIZE;
+            this.maximizeWindowButton.setGraphic(SvgIconFactory.createIcon(glyph, 10.5, Color.WHITE));
+        }
+        if (this.closeWindowButton != null) {
+            this.closeWindowButton.setGraphic(SvgIconFactory.createIcon(AppGlyphs.CLOSE, 9.0, Color.WHITE));
+        }
     }
 
     private void toggleMaximized() {
@@ -1769,6 +1793,7 @@ public final class PlayerShellView {
             this.stage.setHeight(this.restoredStageHeight);
         }
         this.windowMaximized = !this.windowMaximized;
+        updateWindowControlIcons();
     }
 
     private void applyTooltip(final Button button, final String text) {

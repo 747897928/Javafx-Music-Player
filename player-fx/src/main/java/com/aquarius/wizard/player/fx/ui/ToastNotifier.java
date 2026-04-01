@@ -113,12 +113,14 @@ public final class ToastNotifier {
         final Button closeButton = new Button();
         closeButton.getStyleClass().add("toast-close-button");
         closeButton.setGraphic(SvgIconFactory.createIcon(AppGlyphs.CLOSE, 11.0, Color.rgb(255, 255, 255, 0.88)));
+        closeButton.setFocusTraversable(false);
 
         final Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         final HBox header = new HBox(10.0, titleLabel, spacer, closeButton);
-        header.setAlignment(Pos.CENTER_LEFT);
+        header.setAlignment(Pos.TOP_LEFT);
         header.getStyleClass().add("toast-header");
+        HBox.setMargin(closeButton, new Insets(-2.0, -2.0, 0.0, 6.0));
 
         final Label messageLabel = new Label(message == null ? "" : message);
         messageLabel.getStyleClass().add("toast-message");
@@ -147,7 +149,7 @@ public final class ToastNotifier {
 
         final StackPane iconBadge = buildIconBadge(kind);
         final HBox row = new HBox(12.0, iconBadge, content);
-        row.setAlignment(Pos.CENTER_LEFT);
+        row.setAlignment(Pos.TOP_LEFT);
         row.getStyleClass().add("toast-card");
         row.getStyleClass().add("toast-card-" + kind.cssSuffix);
         row.setOpacity(0.0);
