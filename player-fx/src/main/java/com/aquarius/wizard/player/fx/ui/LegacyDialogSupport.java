@@ -61,7 +61,7 @@ public final class LegacyDialogSupport {
         final VBox body = new VBox(18.0);
         body.getStyleClass().add("legacy-dialog-body");
 
-        final HBox headerRow = new HBox(14.0, createBadge("?"), buildConfirmTextBlock(title, content));
+        final HBox headerRow = new HBox(buildConfirmTextBlock(title, content));
         headerRow.setAlignment(Pos.TOP_LEFT);
 
         final Button cancelButton = createDialogButton("取消", false, dialog::close);

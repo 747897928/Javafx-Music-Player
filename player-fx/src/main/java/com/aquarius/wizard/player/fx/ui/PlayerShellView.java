@@ -1714,7 +1714,6 @@ public final class PlayerShellView {
 
         final StackPane sliderWrapper = new StackPane(this.volumeSlider);
         sliderWrapper.getStyleClass().add("volume-slider-wrapper");
-        sliderWrapper.setPadding(new Insets(14.0, 8.0, 14.0, 8.0));
         final StackPane popupSurface = new StackPane(sliderWrapper);
         popupSurface.getStyleClass().add("volume-popup-surface");
         popupSurface.getStylesheets().add(
@@ -2143,4 +2142,3 @@ public final class PlayerShellView {
         SINGLE_LOOP
     }
 }
-

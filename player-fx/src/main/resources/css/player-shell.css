@@ -619,41 +619,41 @@
 }
 
 .volume-popup-surface {
-    -fx-background-color: rgba(14, 25, 78, 0.96);
-    -fx-background-radius: 18px;
-    -fx-border-color: rgba(148, 180, 255, 0.22);
-    -fx-border-radius: 18px;
+    -fx-background-color: rgba(10, 19, 66, 0.92);
+    -fx-background-radius: 16px;
+    -fx-border-color: rgba(255, 255, 255, 0.12);
+    -fx-border-radius: 16px;
     -fx-border-width: 1px;
     -fx-padding: 0;
-    -fx-effect: dropshadow(gaussian, rgba(8, 18, 56, 0.34), 18, 0.18, 0, 6);
+    -fx-effect: dropshadow(gaussian, rgba(7, 14, 44, 0.28), 16, 0.16, 0, 4);
 }
 
 .volume-slider-wrapper {
     -fx-alignment: center;
-    -fx-padding: 14px 8px 14px 8px;
+    -fx-padding: 10px 4px 10px 4px;
 }
 
 .volume-slider {
-    -fx-pref-height: 96px;
-    -fx-max-height: 96px;
+    -fx-pref-height: 88px;
+    -fx-max-height: 88px;
     -fx-padding: 0;
 }
 
 .volume-slider .track {
-    -fx-background-color: rgba(255, 255, 255, 0.24);
+    -fx-background-color: rgba(255, 255, 255, 0.22);
     -fx-background-radius: 999px;
-    -fx-pref-width: 4px;
+    -fx-pref-width: 3px;
     -fx-background-insets: 0;
 }
 
 .volume-slider .thumb {
-    -fx-background-color: #8fd0ff;
-    -fx-border-color: rgba(255, 255, 255, 0.42);
+    -fx-background-color: #99d8ff;
+    -fx-border-color: rgba(255, 255, 255, 0.28);
     -fx-border-radius: 999px;
     -fx-background-radius: 999px;
-    -fx-pref-width: 12px;
-    -fx-pref-height: 12px;
-    -fx-effect: dropshadow(gaussian, rgba(80, 170, 255, 0.3), 8, 0.18, 0, 0);
+    -fx-pref-width: 10px;
+    -fx-pref-height: 10px;
+    -fx-effect: dropshadow(gaussian, rgba(80, 170, 255, 0.24), 6, 0.12, 0, 0);
 }
 
 .mini-player-stage {
