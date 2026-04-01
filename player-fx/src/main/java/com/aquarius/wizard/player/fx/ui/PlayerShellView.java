@@ -181,7 +181,7 @@ public final class PlayerShellView {
         configureVolumeControls();
         this.root.getStyleClass().add("app-frame");
         this.root.getChildren().add(buildMainChrome());
-        installLocalImportDragAndDrop(this.root);
+        installLocalImportDragAndDrop(this.sidebar);
         applyCurrentSong(this.currentSong);
         syncPlaybackState();
         this.nowPlayingDrawerView.setTickerEnabled(false);
@@ -1544,18 +1544,15 @@ public final class PlayerShellView {
         dragTarget.setOnDragOver(event -> {
             if (hasImportableFiles(event.getDragboard())) {
                 event.acceptTransferModes(TransferMode.COPY);
-                this.root.getStyleClass().add("app-frame-drag-over");
                 this.sidebar.getStyleClass().add("sidebar-import-drag-over");
             }
             event.consume();
         });
         dragTarget.setOnDragExited(event -> {
-            this.root.getStyleClass().remove("app-frame-drag-over");
             this.sidebar.getStyleClass().remove("sidebar-import-drag-over");
             event.consume();
         });
         dragTarget.setOnDragDropped(event -> {
-            this.root.getStyleClass().remove("app-frame-drag-over");
             this.sidebar.getStyleClass().remove("sidebar-import-drag-over");
             final Dragboard dragboard = event.getDragboard();
             if (hasImportableFiles(dragboard)) {
