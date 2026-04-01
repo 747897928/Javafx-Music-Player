@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>cn.gxust</groupId>
+        <groupId>com.aquarius.wizard</groupId>
         <artifactId>javafx-music-player-parent</artifactId>
         <version>2.2.0-SNAPSHOT</version>
     </parent>
@@ -13,3 +13,4 @@
     <artifactId>player-common</artifactId>
     <name>player-common</name>
 </project>
+

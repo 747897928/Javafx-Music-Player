@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>cn.gxust</groupId>
+        <groupId>com.aquarius.wizard</groupId>
         <artifactId>javafx-music-player-parent</artifactId>
         <version>2.2.0-SNAPSHOT</version>
     </parent>
@@ -15,12 +15,12 @@
 
     <dependencies>
         <dependency>
-            <groupId>cn.gxust</groupId>
+            <groupId>com.aquarius.wizard</groupId>
             <artifactId>player-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>cn.gxust</groupId>
+            <groupId>com.aquarius.wizard</groupId>
             <artifactId>player-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -76,9 +76,10 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>${javafx.maven.plugin.version}</version>
                 <configuration>
-                    <mainClass>cn.gxust.player.fx.PlayerFxLauncher</mainClass>
+                    <mainClass>com.aquarius.wizard.player.fx.PlayerFxLauncher</mainClass>
                 </configuration>
             </plugin>
         </plugins>
     </build>
 </project>
+
