@@ -42,8 +42,7 @@ public final class LegacyDialogSupport {
         body.getStyleClass().add("legacy-dialog-body");
 
         final ImageView logoView = loadImageView("/images/topandbottom/pandefault.png", 54.0);
-        final StackPane badge = createBadge("i");
-        final HBox headerRow = new HBox(16.0, logoView, buildAboutTextBlock(), badge);
+        final HBox headerRow = new HBox(16.0, logoView, buildAboutTextBlock());
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
         final HBox actions = new HBox(createDialogButton("确定", true, dialog::close));
@@ -124,14 +123,6 @@ public final class LegacyDialogSupport {
         button.setOnAction(event -> action.run());
         MaterialButtonFeedback.install(button);
         return button;
-    }
-
-    private static StackPane createBadge(final String text) {
-        final Label badgeLabel = new Label(text);
-        badgeLabel.getStyleClass().add("legacy-dialog-badge-label");
-        final StackPane badge = new StackPane(badgeLabel);
-        badge.getStyleClass().add("legacy-dialog-badge");
-        return badge;
     }
 
     private static Stage createDialog(final Stage owner, final String title, final double width, final double height) {

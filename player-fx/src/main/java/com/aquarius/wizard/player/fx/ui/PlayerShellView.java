@@ -20,7 +20,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Slider;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
@@ -124,7 +123,7 @@ public final class PlayerShellView {
     private final Button volumeButton = roundControl("");
     private final Button miniModeButton = roundControl("");
     private final Button moreActionsButton = roundControl("");
-    private final Slider volumeSlider = new Slider(0.0, 100.0, 50.0);
+    private final VerticalVolumeBar volumeSlider = new VerticalVolumeBar();
     private final Popup volumePopup = new Popup();
 
     private Button discoverNavButton;
@@ -1696,17 +1695,7 @@ public final class PlayerShellView {
     }
 
     private void configureVolumeControls() {
-        this.volumeSlider.setOrientation(Orientation.VERTICAL);
-        this.volumeSlider.setMajorTickUnit(1.0);
-        this.volumeSlider.setMinorTickCount(0);
-        this.volumeSlider.setShowTickMarks(false);
-        this.volumeSlider.setShowTickLabels(false);
         this.volumeSlider.setValue(50.0);
-        this.volumeSlider.setMinHeight(96.0);
-        this.volumeSlider.setPrefHeight(96.0);
-        this.volumeSlider.setMaxHeight(96.0);
-        this.volumeSlider.setPrefWidth(28.0);
-        this.volumeSlider.getStyleClass().add("volume-slider");
         this.volumeSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
             this.playbackService.setVolume(newValue.doubleValue() / 100.0);
             updateVolumeButtonIcon();
