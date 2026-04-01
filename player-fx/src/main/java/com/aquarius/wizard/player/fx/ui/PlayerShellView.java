@@ -1058,6 +1058,42 @@ public final class PlayerShellView {
         }
     }
 
+    private void showSongDetail(final SongSummary song) {
+        if (song == null) {
+            return;
+        }
+        if (isCurrentPlaybackSong(song)) {
+            syncSongSelection();
+            this.nowPlayingDrawerView.setSong(this.currentSong);
+            if (this.currentSong.isLegacyOnlineSource()
+                && this.currentSong.sourceId() != null
+                && !this.currentSong.sourceId().isBlank()
+                && (this.currentSong.lyricLines() == null || this.currentSong.lyricLines().isEmpty())) {
+                loadLegacyLyricsAsync(this.currentSong);
+            }
+            this.drawer.open();
+            return;
+        }
+        playSong(song, true);
+    }
+
+    private boolean isCurrentPlaybackSong(final SongSummary song) {
+        if (song == null || this.currentSong == null || !this.playbackService.hasLoadedSong()) {
+            return false;
+        }
+        if (this.currentSong.sourceId() != null
+            && !this.currentSong.sourceId().isBlank()
+            && Objects.equals(this.currentSong.sourceId(), song.sourceId())) {
+            return true;
+        }
+        if (this.currentSong.mediaSource() != null
+            && !this.currentSong.mediaSource().isBlank()
+            && Objects.equals(this.currentSong.mediaSource(), song.mediaSource())) {
+            return true;
+        }
+        return this.currentSong.equals(song);
+    }
+
     private void loadLegacyLyricsAsync(final SongSummary song) {
         CompletableFuture
             .supplyAsync(() -> this.legacyOnlineMusicService.loadLyrics(song))
@@ -1181,7 +1217,7 @@ public final class PlayerShellView {
         nextPlayItem.setOnAction(event -> queueNextSong(row.getItem()));
 
         final MenuItem detailItem = createMenuItem("查看歌词详情", AppGlyphs.LYRICS);
-        detailItem.setOnAction(event -> playSong(row.getItem(), true));
+        detailItem.setOnAction(event -> showSongDetail(row.getItem()));
 
         final MenuItem copyLinkItem = createMenuItem("复制链接", AppGlyphs.LINK);
         copyLinkItem.setOnAction(event -> copySongLink(row.getItem()));
@@ -1744,12 +1780,12 @@ public final class PlayerShellView {
             buttonBounds.getHeight()
         ).stream().findFirst().orElseGet(Screen::getPrimary).getVisualBounds();
         final double popupX = clamp(
-            buttonBounds.getMinX() + ((buttonBounds.getWidth() - popupWidth) / 2.0),
+            buttonBounds.getMinX() + ((buttonBounds.getWidth() - popupWidth) / 2.0) - 14.0,
             visualBounds.getMinX() + 8.0,
             visualBounds.getMaxX() - popupWidth - 8.0
         );
         final double popupY = clamp(
-            buttonBounds.getMinY() - popupHeight - 10.0,
+            buttonBounds.getMinY() - popupHeight - 14.0,
             visualBounds.getMinY() + 8.0,
             visualBounds.getMaxY() - popupHeight - 8.0
         );
