@@ -1253,9 +1253,18 @@
 }
 
 .toast-progress {
-    -fx-pref-height: 5px;
+    -fx-pref-height: 4px;
     -fx-max-width: Infinity;
     -fx-accent: #76cfff;
+}
+
+.toast-progress-timed {
+    -fx-pref-height: 3px;
+    -fx-opacity: 0.92;
+}
+
+.toast-progress-loading {
+    -fx-pref-height: 5px;
 }
 
 .toast-progress > .track {

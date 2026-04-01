@@ -27,6 +27,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.TransferMode;
@@ -73,6 +74,8 @@ import javax.imageio.ImageIO;
  * the rebuilt JavaFX module before the backend integration phase starts.
  */
 public final class PlayerShellView {
+
+    private static final long PLAYBACK_WARNING_SUPPRESS_NANOS = java.time.Duration.ofMillis(1_250L).toNanos();
 
     private final Stage stage;
     private final StackPane root = new StackPane();
@@ -141,11 +144,13 @@ public final class PlayerShellView {
     private boolean disposed;
     private boolean exiting;
     private boolean windowMaximized;
+    private boolean sidebarImportHighlightVisible;
     private FxSampleData.PlaylistDetail cachedLocalLibrary;
     private SongSummary queuedNextSong;
     private ReadOnlyDoubleProperty responsiveSceneWidthProperty;
     private PlaybackMode playbackMode = PlaybackMode.LIST_LOOP;
     private int discoverVisibleBatchSize = -1;
+    private long lastPlaybackWarningNanos;
 
     private double dragOffsetX;
     private double dragOffsetY;
@@ -1578,21 +1583,27 @@ public final class PlayerShellView {
     }
 
     private void installLocalImportDragAndDrop(final Node dragTarget) {
+        this.root.addEventFilter(DragEvent.DRAG_OVER, event -> updateSidebarImportHighlight(dragTarget, event));
+        this.root.addEventFilter(DragEvent.DRAG_EXITED, event -> clearSidebarImportHighlight());
+        this.root.addEventFilter(DragEvent.DRAG_DROPPED, event -> clearSidebarImportHighlight());
+        this.root.addEventFilter(DragEvent.DRAG_DONE, event -> clearSidebarImportHighlight());
         dragTarget.setOnDragOver(event -> {
-            if (hasImportableFiles(event.getDragboard())) {
+            if (hasImportableFiles(event.getDragboard()) && isScenePointInsideNode(dragTarget, event.getSceneX(), event.getSceneY())) {
                 event.acceptTransferModes(TransferMode.COPY);
-                this.sidebar.getStyleClass().add("sidebar-import-drag-over");
+                showSidebarImportHighlight();
+            } else {
+                clearSidebarImportHighlight();
             }
             event.consume();
         });
         dragTarget.setOnDragExited(event -> {
-            this.sidebar.getStyleClass().remove("sidebar-import-drag-over");
+            clearSidebarImportHighlight();
             event.consume();
         });
         dragTarget.setOnDragDropped(event -> {
-            this.sidebar.getStyleClass().remove("sidebar-import-drag-over");
+            clearSidebarImportHighlight();
             final Dragboard dragboard = event.getDragboard();
-            if (hasImportableFiles(dragboard)) {
+            if (hasImportableFiles(dragboard) && isScenePointInsideNode(dragTarget, event.getSceneX(), event.getSceneY())) {
                 importLocalFiles(dragboard.getFiles().stream().map(java.io.File::toPath).toList(), false);
                 event.setDropCompleted(true);
             } else {
@@ -1600,6 +1611,43 @@ public final class PlayerShellView {
             }
             event.consume();
         });
+    }
+
+    private void updateSidebarImportHighlight(final Node dragTarget, final DragEvent event) {
+        if (dragTarget == null || event == null || !hasImportableFiles(event.getDragboard())) {
+            clearSidebarImportHighlight();
+            return;
+        }
+        if (isScenePointInsideNode(dragTarget, event.getSceneX(), event.getSceneY())) {
+            showSidebarImportHighlight();
+            return;
+        }
+        clearSidebarImportHighlight();
+    }
+
+    private boolean isScenePointInsideNode(final Node node, final double sceneX, final double sceneY) {
+        if (node == null) {
+            return false;
+        }
+        final Bounds sceneBounds = node.localToScene(node.getBoundsInLocal());
+        return sceneBounds != null && sceneBounds.contains(sceneX, sceneY);
+    }
+
+    private void showSidebarImportHighlight() {
+        if (this.sidebarImportHighlightVisible) {
+            return;
+        }
+        this.sidebarImportHighlightVisible = true;
+        this.sidebar.getStyleClass().add("sidebar-import-drag-over");
+    }
+
+    private void clearSidebarImportHighlight() {
+        if (!this.sidebarImportHighlightVisible) {
+            this.sidebar.getStyleClass().remove("sidebar-import-drag-over");
+            return;
+        }
+        this.sidebarImportHighlightVisible = false;
+        this.sidebar.getStyleClass().remove("sidebar-import-drag-over");
     }
 
     private boolean hasImportableFiles(final Dragboard dragboard) {
@@ -1913,10 +1961,14 @@ public final class PlayerShellView {
 
     private void togglePlayback() {
         if (this.playbackService.isPlaying()) {
+            this.playbackActive = false;
+            syncPlaybackState();
             this.playbackService.pause();
             return;
         }
         if (this.playbackService.hasLoadedSong() && this.playbackService.isCurrentSong(this.currentSong)) {
+            this.playbackActive = true;
+            syncPlaybackState();
             this.playbackService.resume();
             return;
         }
@@ -2110,6 +2162,7 @@ public final class PlayerShellView {
         this.playbackService.setPlaybackListener(new AudioPlaybackService.PlaybackListener() {
             @Override
             public void onPlaybackReady(final Duration totalDuration) {
+                lastPlaybackWarningNanos = 0L;
                 progressSeekBar.setDisable(false);
                 if (!totalDuration.isZero()) {
                     rightTimeLabel.setText(formatDuration(totalDuration));
@@ -2152,10 +2205,22 @@ public final class PlayerShellView {
                 progressSeekBar.reset();
                 syncPlaybackState();
                 if (!isBlank(message)) {
-                    showWarning("播放失败", message);
+                    showPlaybackWarning(message);
                 }
             }
         });
+    }
+
+    private void showPlaybackWarning(final String message) {
+        if (isBlank(message)) {
+            return;
+        }
+        final long currentNanos = System.nanoTime();
+        if (currentNanos - this.lastPlaybackWarningNanos < PLAYBACK_WARNING_SUPPRESS_NANOS) {
+            return;
+        }
+        this.lastPlaybackWarningNanos = currentNanos;
+        showWarning("播放失败", message);
     }
 
     private boolean isBlank(final String value) {

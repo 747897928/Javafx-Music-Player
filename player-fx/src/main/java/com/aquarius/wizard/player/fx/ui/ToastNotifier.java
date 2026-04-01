@@ -1,7 +1,10 @@
 package com.aquarius.wizard.player.fx.ui;
 
 import javafx.animation.FadeTransition;
-import javafx.animation.PauseTransition;
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -87,7 +90,14 @@ public final class ToastNotifier {
     }
 
     private void showToast(final ToastKind kind, final String title, final String message, final Duration timeout) {
-        runOnFxThread(() -> showEntry(createToastEntry(kind, title, message, timeout, false)));
+        runOnFxThread(() -> {
+            final ToastEntry duplicateEntry = findDuplicateEntry(kind, title, message);
+            if (duplicateEntry != null) {
+                refreshEntry(duplicateEntry);
+                return;
+            }
+            showEntry(createToastEntry(kind, title, message, timeout, false));
+        });
     }
 
     private ToastEntry createToastEntry(
@@ -122,6 +132,14 @@ public final class ToastNotifier {
         if (loading) {
             progressBar = new ProgressBar(ProgressBar.INDETERMINATE_PROGRESS);
             progressBar.getStyleClass().add("toast-progress");
+            progressBar.getStyleClass().add("toast-progress-loading");
+            progressBar.setMaxWidth(Double.MAX_VALUE);
+            VBox.setMargin(progressBar, new Insets(4.0, 0.0, 0.0, 0.0));
+            content.getChildren().add(progressBar);
+        } else if (timeout != null) {
+            progressBar = new ProgressBar(1.0);
+            progressBar.getStyleClass().add("toast-progress");
+            progressBar.getStyleClass().add("toast-progress-timed");
             progressBar.setMaxWidth(Double.MAX_VALUE);
             VBox.setMargin(progressBar, new Insets(4.0, 0.0, 0.0, 0.0));
             content.getChildren().add(progressBar);
@@ -144,8 +162,20 @@ public final class ToastNotifier {
         popup.setHideOnEscape(false);
         popup.getContent().setAll(surface);
 
-        final ToastEntry entry = new ToastEntry(popup, surface, row, messageLabel, progressBar, timeout);
+        final ToastEntry entry = new ToastEntry(
+            popup,
+            surface,
+            row,
+            messageLabel,
+            progressBar,
+            timeout,
+            loading,
+            normalizeText(title),
+            normalizeText(message),
+            kind
+        );
         closeButton.setOnAction(event -> hideEntry(entry, true));
+        installHoverHandling(entry);
         return entry;
     }
 
@@ -177,20 +207,14 @@ public final class ToastNotifier {
         fadeIn.setToValue(1.0);
         fadeIn.play();
 
-        if (entry.timeout != null) {
-            entry.autoCloseTransition = new PauseTransition(entry.timeout);
-            entry.autoCloseTransition.setOnFinished(event -> hideEntry(entry, true));
-            entry.autoCloseTransition.play();
-        }
+        restartAutoClose(entry);
     }
 
     private void hideEntry(final ToastEntry entry, final boolean animate) {
         if (entry == null || !entry.closed.compareAndSet(false, true)) {
             return;
         }
-        if (entry.autoCloseTransition != null) {
-            entry.autoCloseTransition.stop();
-        }
+        stopAutoClose(entry);
         if (!entry.popup.isShowing()) {
             this.activeToasts.remove(entry);
             return;
@@ -210,6 +234,77 @@ public final class ToastNotifier {
             relayoutToasts();
         });
         fadeOut.play();
+    }
+
+    private ToastEntry findDuplicateEntry(final ToastKind kind, final String title, final String message) {
+        final String normalizedTitle = normalizeText(title);
+        final String normalizedMessage = normalizeText(message);
+        for (int index = this.activeToasts.size() - 1; index >= 0; index--) {
+            final ToastEntry entry = this.activeToasts.get(index);
+            if (entry.closed.get() || !entry.popup.isShowing()) {
+                continue;
+            }
+            if (entry.kind != kind) {
+                continue;
+            }
+            if (!Objects.equals(entry.title, normalizedTitle) || !Objects.equals(entry.message, normalizedMessage)) {
+                continue;
+            }
+            return entry;
+        }
+        return null;
+    }
+
+    private void refreshEntry(final ToastEntry entry) {
+        if (entry == null || entry.closed.get()) {
+            return;
+        }
+        entry.shownAtNanos = System.nanoTime();
+        this.activeToasts.remove(entry);
+        this.activeToasts.add(entry);
+        relayoutToasts();
+        restartAutoClose(entry);
+    }
+
+    private void installHoverHandling(final ToastEntry entry) {
+        entry.card.setOnMouseEntered(event -> pauseAutoClose(entry));
+        entry.card.setOnMouseExited(event -> resumeAutoClose(entry));
+    }
+
+    private void restartAutoClose(final ToastEntry entry) {
+        if (entry == null || entry.loading || entry.timeout == null || entry.progressBar == null) {
+            return;
+        }
+        stopAutoClose(entry);
+        entry.progressBar.setProgress(1.0);
+        entry.autoCloseTimeline = new Timeline(
+            new KeyFrame(Duration.ZERO, new KeyValue(entry.progressBar.progressProperty(), 1.0, Interpolator.LINEAR)),
+            new KeyFrame(entry.timeout, event -> hideEntry(entry, true),
+                new KeyValue(entry.progressBar.progressProperty(), 0.0, Interpolator.LINEAR))
+        );
+        entry.autoCloseTimeline.playFromStart();
+    }
+
+    private void stopAutoClose(final ToastEntry entry) {
+        if (entry == null || entry.autoCloseTimeline == null) {
+            return;
+        }
+        entry.autoCloseTimeline.stop();
+        entry.autoCloseTimeline = null;
+    }
+
+    private void pauseAutoClose(final ToastEntry entry) {
+        if (entry == null || entry.loading || entry.autoCloseTimeline == null) {
+            return;
+        }
+        entry.autoCloseTimeline.pause();
+    }
+
+    private void resumeAutoClose(final ToastEntry entry) {
+        if (entry == null || entry.loading || entry.autoCloseTimeline == null) {
+            return;
+        }
+        entry.autoCloseTimeline.play();
     }
 
     private void relayoutToasts() {
@@ -286,6 +381,10 @@ public final class ToastNotifier {
         return result.get();
     }
 
+    private String normalizeText(final String value) {
+        return value == null ? "" : value.trim();
+    }
+
     public final class LoadingHandle {
 
         private final ToastEntry entry;
@@ -341,8 +440,13 @@ public final class ToastNotifier {
         private final Label messageLabel;
         private final ProgressBar progressBar;
         private final Duration timeout;
+        private final boolean loading;
+        private final String title;
+        private final String message;
+        private final ToastKind kind;
         private final AtomicBoolean closed = new AtomicBoolean(false);
-        private PauseTransition autoCloseTransition;
+        private Timeline autoCloseTimeline;
+        private long shownAtNanos = System.nanoTime();
 
         private ToastEntry(
             final Popup popup,
@@ -350,7 +454,11 @@ public final class ToastNotifier {
             final HBox card,
             final Label messageLabel,
             final ProgressBar progressBar,
-            final Duration timeout
+            final Duration timeout,
+            final boolean loading,
+            final String title,
+            final String message,
+            final ToastKind kind
         ) {
             this.popup = popup;
             this.surface = surface;
@@ -358,6 +466,10 @@ public final class ToastNotifier {
             this.messageLabel = messageLabel;
             this.progressBar = progressBar;
             this.timeout = timeout;
+            this.loading = loading;
+            this.title = title;
+            this.message = message;
+            this.kind = kind;
         }
     }
 }
