@@ -5,12 +5,17 @@ import javafx.application.Platform;
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Font;
+import java.awt.GraphicsEnvironment;
 import java.awt.Graphics2D;
 import java.awt.PopupMenu;
 import java.awt.RenderingHints;
 import java.awt.SystemTray;
 import java.awt.TrayIcon;
 import java.awt.image.BufferedImage;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * Lightweight tray integration for the rebuilt JavaFX desktop client.
@@ -45,6 +50,8 @@ public final class SystemTrayBridge {
             }
             try {
                 final PopupMenu popupMenu = new PopupMenu();
+                final Font trayMenuFont = resolveTrayMenuFont();
+                popupMenu.setFont(trayMenuFont);
                 popupMenu.add(menuItem("显示主窗口", showAction));
                 popupMenu.add(menuItem("进入迷你模式", miniModeAction));
                 popupMenu.addSeparator();
@@ -85,6 +92,7 @@ public final class SystemTrayBridge {
 
     private java.awt.MenuItem menuItem(final String label, final Runnable action) {
         final java.awt.MenuItem item = new java.awt.MenuItem(label);
+        item.setFont(resolveTrayMenuFont());
         item.addActionListener(event -> runFx(action));
         return item;
     }
@@ -110,6 +118,25 @@ public final class SystemTrayBridge {
         graphics.drawString("♫", 20, 42);
         graphics.dispose();
         return image;
+    }
+
+    private Font resolveTrayMenuFont() {
+        final Set<String> availableFonts = new HashSet<>(
+            Arrays.asList(GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames(Locale.ROOT))
+        );
+        final String[] preferredFonts = {
+            "Microsoft YaHei UI",
+            "Microsoft YaHei",
+            "PingFang SC",
+            "Noto Sans CJK SC",
+            Font.DIALOG
+        };
+        for (final String preferredFont : preferredFonts) {
+            if (availableFonts.contains(preferredFont) || Font.DIALOG.equals(preferredFont)) {
+                return new Font(preferredFont, Font.PLAIN, 12);
+            }
+        }
+        return new Font(Font.DIALOG, Font.PLAIN, 12);
     }
 }
 

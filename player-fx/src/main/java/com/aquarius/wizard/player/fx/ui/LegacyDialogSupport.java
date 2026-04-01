@@ -140,6 +140,7 @@ public final class LegacyDialogSupport {
 
         final StackPane root = new StackPane(shell);
         root.getStyleClass().add("legacy-dialog-root");
+        root.setStyle("-fx-background-color: transparent;");
 
         final Scene scene = new Scene(root, width, height);
         scene.setFill(Color.TRANSPARENT);
