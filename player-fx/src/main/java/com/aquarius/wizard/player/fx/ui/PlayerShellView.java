@@ -11,15 +11,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.embed.swing.SwingFXUtils;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
+import javafx.geometry.*;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ContextMenu;
-import javafx.scene.control.CustomMenuItem;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.OverrunStyle;
@@ -47,9 +43,9 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
-import javafx.geometry.Side;
-import javafx.geometry.Orientation;
 import javafx.stage.FileChooser;
+import javafx.stage.Popup;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
@@ -129,7 +125,7 @@ public final class PlayerShellView {
     private final Button miniModeButton = roundControl("");
     private final Button moreActionsButton = roundControl("");
     private final Slider volumeSlider = new Slider(0.0, 100.0, 50.0);
-    private final ContextMenu volumePopup = new ContextMenu();
+    private final Popup volumePopup = new Popup();
 
     private Button discoverNavButton;
     private Button playlistNavButton;
@@ -145,6 +141,7 @@ public final class PlayerShellView {
     private boolean legacyOnlineLoading;
     private boolean disposed;
     private boolean exiting;
+    private boolean windowMaximized;
     private FxSampleData.PlaylistDetail cachedLocalLibrary;
     private SongSummary queuedNextSong;
     private ReadOnlyDoubleProperty responsiveSceneWidthProperty;
@@ -153,6 +150,10 @@ public final class PlayerShellView {
 
     private double dragOffsetX;
     private double dragOffsetY;
+    private double restoredStageX;
+    private double restoredStageY;
+    private double restoredStageWidth;
+    private double restoredStageHeight;
 
     public PlayerShellView(final Stage stage) {
         this.stage = stage;
@@ -1667,7 +1668,23 @@ public final class PlayerShellView {
     }
 
     private void toggleMaximized() {
-        this.stage.setMaximized(!this.stage.isMaximized());
+        if (!this.windowMaximized) {
+            this.restoredStageX = this.stage.getX();
+            this.restoredStageY = this.stage.getY();
+            this.restoredStageWidth = this.stage.getWidth();
+            this.restoredStageHeight = this.stage.getHeight();
+            final Rectangle2D visualBounds = resolveStageVisualBounds();
+            this.stage.setX(visualBounds.getMinX());
+            this.stage.setY(visualBounds.getMinY());
+            this.stage.setWidth(visualBounds.getWidth());
+            this.stage.setHeight(visualBounds.getHeight());
+        } else {
+            this.stage.setX(this.restoredStageX);
+            this.stage.setY(this.restoredStageY);
+            this.stage.setWidth(this.restoredStageWidth);
+            this.stage.setHeight(this.restoredStageHeight);
+        }
+        this.windowMaximized = !this.windowMaximized;
     }
 
     private void applyTooltip(final Button button, final String text) {
@@ -1685,22 +1702,28 @@ public final class PlayerShellView {
         this.volumeSlider.setShowTickMarks(false);
         this.volumeSlider.setShowTickLabels(false);
         this.volumeSlider.setValue(50.0);
-        this.volumeSlider.setMinHeight(0.0);
-        this.volumeSlider.setPrefWidth(30.0);
+        this.volumeSlider.setMinHeight(96.0);
+        this.volumeSlider.setPrefHeight(96.0);
+        this.volumeSlider.setMaxHeight(96.0);
+        this.volumeSlider.setPrefWidth(28.0);
         this.volumeSlider.getStyleClass().add("volume-slider");
         this.volumeSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
             this.playbackService.setVolume(newValue.doubleValue() / 100.0);
             updateVolumeButtonIcon();
         });
 
-        final VBox volumeContent = new VBox(this.volumeSlider);
-        volumeContent.getStyleClass().add("volume-popup-content");
-        volumeContent.setAlignment(Pos.CENTER);
-        volumeContent.setFillWidth(false);
-        final CustomMenuItem sliderItem = new CustomMenuItem(volumeContent, false);
-        sliderItem.getStyleClass().add("volume-popup-item");
-        this.volumePopup.getStyleClass().add("volume-popup-menu");
-        this.volumePopup.getItems().setAll(sliderItem);
+        final StackPane sliderWrapper = new StackPane(this.volumeSlider);
+        sliderWrapper.getStyleClass().add("volume-slider-wrapper");
+        sliderWrapper.setPadding(new Insets(14.0, 8.0, 14.0, 8.0));
+        final StackPane popupSurface = new StackPane(sliderWrapper);
+        popupSurface.getStyleClass().add("volume-popup-surface");
+        popupSurface.getStylesheets().add(
+            Objects.requireNonNull(PlayerShellView.class.getResource("/css/player-shell.css")).toExternalForm()
+        );
+        this.volumePopup.getContent().setAll(popupSurface);
+        this.volumePopup.setAutoHide(true);
+        this.volumePopup.setAutoFix(true);
+        this.volumePopup.setHideOnEscape(true);
         this.playbackService.setVolume(0.5);
         updateVolumeButtonIcon();
     }
@@ -1710,7 +1733,39 @@ public final class PlayerShellView {
             this.volumePopup.hide();
             return;
         }
-        this.volumePopup.show(this.volumeButton, Side.BOTTOM, -5.0, -35.0);
+        if (this.volumePopup.getContent().isEmpty()) {
+            return;
+        }
+        final Node popupContent = this.volumePopup.getContent().get(0);
+        popupContent.applyCss();
+        popupContent.autosize();
+        final double popupWidth = popupContent instanceof Region region
+            ? region.prefWidth(-1.0)
+            : popupContent.getLayoutBounds().getWidth();
+        final double popupHeight = popupContent instanceof Region region
+            ? region.prefHeight(-1.0)
+            : popupContent.getLayoutBounds().getHeight();
+        final Bounds buttonBounds = this.volumeButton.localToScreen(this.volumeButton.getBoundsInLocal());
+        if (buttonBounds == null) {
+            return;
+        }
+        final Rectangle2D visualBounds = Screen.getScreensForRectangle(
+            buttonBounds.getMinX(),
+            buttonBounds.getMinY(),
+            buttonBounds.getWidth(),
+            buttonBounds.getHeight()
+        ).stream().findFirst().orElseGet(Screen::getPrimary).getVisualBounds();
+        final double popupX = clamp(
+            buttonBounds.getMinX() + ((buttonBounds.getWidth() - popupWidth) / 2.0),
+            visualBounds.getMinX() + 8.0,
+            visualBounds.getMaxX() - popupWidth - 8.0
+        );
+        final double popupY = clamp(
+            buttonBounds.getMinY() - popupHeight - 10.0,
+            visualBounds.getMinY() + 8.0,
+            visualBounds.getMaxY() - popupHeight - 8.0
+        );
+        this.volumePopup.show(this.stage, popupX, popupY);
     }
 
     private void updateVolumeButtonIcon() {
@@ -1726,15 +1781,7 @@ public final class PlayerShellView {
     }
 
     private void openAboutDialog() {
-        final Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.initOwner(this.stage);
-        alert.setTitle("关于 WizardMusicBox");
-        alert.setHeaderText("WizardMusicBox");
-        alert.setContentText(
-            "当前阶段按 README 的旧版交互迁移执行。\n"
-                + "已恢复迷你模式入口、legacy 在线歌单/搜索/下载兼容、本地导入与抽屉歌词。"
-        );
-        alert.showAndWait();
+        LegacyDialogSupport.showAbout(this.stage);
     }
 
     private void enableWindowDrag(final Node dragHandle) {
@@ -1743,7 +1790,7 @@ public final class PlayerShellView {
             this.dragOffsetY = event.getSceneY();
         });
         dragHandle.setOnMouseDragged(event -> {
-            if (this.stage.isMaximized()) {
+            if (this.windowMaximized) {
                 return;
             }
             this.stage.setX(event.getScreenX() - this.dragOffsetX);
@@ -1813,13 +1860,7 @@ public final class PlayerShellView {
     }
 
     private boolean confirmAction(final String title, final String content) {
-        final Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.initOwner(this.stage);
-        alert.setTitle(title);
-        alert.setHeaderText(title);
-        alert.setContentText(content);
-        final Optional<ButtonType> result = alert.showAndWait();
-        return result.isPresent() && result.get() == ButtonType.OK;
+        return LegacyDialogSupport.showConfirm(this.stage, title, content);
     }
 
     private void showInformation(final String title, final String content) {
@@ -1989,6 +2030,15 @@ public final class PlayerShellView {
 
     private double clamp(final double value, final double min, final double max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private Rectangle2D resolveStageVisualBounds() {
+        return Screen.getScreensForRectangle(
+            this.stage.getX(),
+            this.stage.getY(),
+            Math.max(this.stage.getWidth(), 1.0),
+            Math.max(this.stage.getHeight(), 1.0)
+        ).stream().findFirst().orElseGet(Screen::getPrimary).getVisualBounds();
     }
 
     private Path resolveSongPath(final SongSummary song) {
