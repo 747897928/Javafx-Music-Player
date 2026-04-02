@@ -4,11 +4,6 @@ import com.aquarius.wizard.player.common.path.WorkspacePathResolver;
 import com.aquarius.wizard.player.model.LyricLine;
 import com.aquarius.wizard.player.model.SongSummary;
 import com.aquarius.wizard.player.fx.ui.FxSampleData;
-import org.jaudiotagger.audio.AudioFile;
-import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.audio.AudioHeader;
-import org.jaudiotagger.tag.FieldKey;
-import org.jaudiotagger.tag.Tag;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -175,33 +170,14 @@ public final class LegacyLocalLibraryService {
     private SongSummary mapToSongSummary(final Path audioFilePath) {
         final String fileName = audioFilePath.getFileName().toString();
         final String stem = stripExtension(fileName);
-        String title = stem;
-        String artist = "";
-        String album = "本地音乐";
-        Duration duration = Duration.ZERO;
-
-        try {
-            final AudioFile audioFile = AudioFileIO.read(audioFilePath.toFile());
-            final Tag tag = audioFile.getTag();
-            final AudioHeader audioHeader = audioFile.getAudioHeader();
-            if (audioHeader != null && audioHeader.getTrackLength() > 0) {
-                duration = Duration.ofSeconds(audioHeader.getTrackLength());
-            }
-            if (tag != null) {
-                title = firstNonBlank(tag.getFirst(FieldKey.TITLE), title);
-                artist = firstNonBlank(tag.getFirst(FieldKey.ARTIST), artist);
-                album = firstNonBlank(tag.getFirst(FieldKey.ALBUM), album);
-            }
-        } catch (Exception ignored) {
-            duration = Duration.ZERO;
-        }
-
-        final List<LyricLine> lyricLines = loadLyricLines(stem, title, artist, album);
+        final LocalAudioMetadataUtils.AudioMetadata metadata =
+            LocalAudioMetadataUtils.readMetadata(audioFilePath, stem, "", "本地音乐");
+        final List<LyricLine> lyricLines = loadLyricLines(stem, metadata.title(), metadata.artist(), metadata.album());
         return new SongSummary(
-            title,
-            artist,
-            album,
-            duration,
+            metadata.title(),
+            metadata.artist(),
+            metadata.album(),
+            metadata.duration(),
             colorFromName(stem),
             lyricLines,
             "LocalMusic",
@@ -275,10 +251,6 @@ public final class LegacyLocalLibraryService {
     private String stripExtension(final String fileName) {
         final int lastDot = fileName.lastIndexOf('.');
         return lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
-    }
-
-    private String firstNonBlank(final String candidate, final String fallback) {
-        return candidate == null || candidate.isBlank() ? fallback : candidate;
     }
 
     private String colorFromName(final String value) {

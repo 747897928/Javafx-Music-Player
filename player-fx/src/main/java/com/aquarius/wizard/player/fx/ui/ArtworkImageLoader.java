@@ -1,12 +1,11 @@
 package com.aquarius.wizard.player.fx.ui;
 
 import com.aquarius.wizard.player.model.SongSummary;
+import com.aquarius.wizard.player.fx.local.LocalAudioMetadataUtils;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
-import org.jaudiotagger.audio.AudioFile;
-import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.tag.Tag;
 
+import java.io.ByteArrayInputStream;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.net.URI;
@@ -31,10 +30,7 @@ public final class ArtworkImageLoader {
         if (songSummary == null) {
             return loadFallbackArtwork();
         }
-        final String cacheKey = "song:" + Objects.toString(songSummary.sourceType(), "")
-            + ":" + Objects.toString(songSummary.sourceId(), "")
-            + ":" + Objects.toString(songSummary.mediaSource(), "")
-            + ":" + Objects.toString(songSummary.artworkUrl(), "");
+        final String cacheKey = buildSongCacheKey(songSummary);
         return this.imageCache.computeIfAbsent(cacheKey, ignored -> resolveSongArtwork(songSummary));
     }
 
@@ -84,17 +80,22 @@ public final class ArtworkImageLoader {
         if (audioFilePath == null || !Files.isRegularFile(audioFilePath)) {
             return null;
         }
-        try {
-            final AudioFile audioFile = AudioFileIO.read(audioFilePath.toFile());
-            final Tag tag = audioFile.getTag();
-            if (tag == null || tag.getFirstArtwork() == null) {
-                return null;
-            }
-            final BufferedImage artworkImage = tag.getFirstArtwork().getImage();
-            return artworkImage == null ? null : SwingFXUtils.toFXImage(artworkImage, null);
-        } catch (Exception ignored) {
+        final LocalAudioMetadataUtils.EmbeddedArtwork embeddedArtwork = LocalAudioMetadataUtils.readArtwork(audioFilePath);
+        if (embeddedArtwork.isEmpty()) {
             return null;
         }
+        final byte[] binaryData = embeddedArtwork.binaryData();
+        if (binaryData != null && binaryData.length > 0) {
+            try (InputStream inputStream = new ByteArrayInputStream(binaryData)) {
+                final Image image = new Image(inputStream);
+                if (!image.isError()) {
+                    return image;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        final BufferedImage artworkImage = embeddedArtwork.bufferedImage();
+        return artworkImage == null ? null : SwingFXUtils.toFXImage(artworkImage, null);
     }
 
     private Path resolveLocalSongPath(final SongSummary songSummary) {
@@ -106,6 +107,29 @@ public final class ArtworkImageLoader {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private String buildSongCacheKey(final SongSummary songSummary) {
+        final StringBuilder builder = new StringBuilder("song:")
+            .append(Objects.toString(songSummary.sourceType(), ""))
+            .append(':')
+            .append(Objects.toString(songSummary.sourceId(), ""))
+            .append(':')
+            .append(Objects.toString(songSummary.mediaSource(), ""))
+            .append(':')
+            .append(Objects.toString(songSummary.artworkUrl(), ""));
+        if (songSummary.isLocalSource()) {
+            final Path audioFilePath = resolveLocalSongPath(songSummary);
+            if (audioFilePath != null) {
+                try {
+                    builder.append(':').append(Files.getLastModifiedTime(audioFilePath).toMillis());
+                    builder.append(':').append(Files.size(audioFilePath));
+                } catch (Exception ignored) {
+                    builder.append(":local");
+                }
+            }
+        }
+        return builder.toString();
     }
 
     private Image loadResourceImage(final String resourcePath) {

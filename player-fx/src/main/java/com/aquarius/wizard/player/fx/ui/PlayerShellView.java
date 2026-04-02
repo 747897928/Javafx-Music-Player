@@ -1541,11 +1541,44 @@ public final class PlayerShellView {
             showWarning("无法下载", "本地音乐已经在磁盘中，不需要重复下载。");
             return;
         }
-        if (this.currentSong.isBackendCompatSource() && this.backendCompatMusicService.isBackendManagedSong(this.currentSong)) {
-            showInformation("无需下载", "当前歌曲已经由 Spring Boot 4 在线模块管理。");
+        if (!this.currentSong.isBackendCompatSource() && !this.currentSong.isBackendCompatSearchSource()) {
+            showWarning("无法下载", "当前歌曲来源暂不支持复制到本地音乐目录。");
             return;
         }
-        showWarning("无法下载", "当前歌曲来源暂不支持复制到本地音乐目录。");
+        final SongSummary songToDownload = this.currentSong;
+        final ToastNotifier.LoadingHandle loadingHandle = this.toastNotifier.loading(
+            "长时间任务运行中，请耐心等待！",
+            "正在通过 Spring Boot 4 后端保存音频、歌词和标签到 ./LocalMusic。"
+        );
+        CompletableFuture
+            .supplyAsync(() -> this.backendCompatMusicService.downloadSongToLocalLibrary(
+                songToDownload,
+                this.localLibraryService.localMusicDirectory(),
+                this.localLibraryService.localLyricDirectory()
+            ))
+            .thenAccept(downloadResult -> Platform.runLater(() -> {
+                loadingHandle.close();
+                if (!downloadResult.success()) {
+                    this.toastNotifier.warn("下载失败", downloadResult.message());
+                    return;
+                }
+                refreshLocalLibraryView();
+                final StringBuilder messageBuilder = new StringBuilder(downloadResult.message());
+                if (downloadResult.musicFile() != null && downloadResult.musicFile().getFileName() != null) {
+                    messageBuilder.append("\n音频：").append(downloadResult.musicFile().getFileName());
+                }
+                if (downloadResult.lyricFile() != null && downloadResult.lyricFile().getFileName() != null) {
+                    messageBuilder.append("\n歌词：").append(downloadResult.lyricFile().getFileName());
+                }
+                this.toastNotifier.success("下载完成", messageBuilder.toString());
+            }))
+            .exceptionally(throwable -> {
+                Platform.runLater(() -> {
+                    loadingHandle.close();
+                    this.toastNotifier.fail("下载失败", "未能把当前在线歌曲保存到本地音乐目录。");
+                });
+                return null;
+            });
     }
 
     private void refreshLocalLibrary() {

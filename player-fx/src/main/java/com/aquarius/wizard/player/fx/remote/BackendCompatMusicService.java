@@ -3,16 +3,22 @@ package com.aquarius.wizard.player.fx.remote;
 import com.aquarius.wizard.player.common.json.JacksonUtils;
 import com.aquarius.wizard.player.model.LyricLine;
 import com.aquarius.wizard.player.model.SongSummary;
+import com.aquarius.wizard.player.fx.local.LocalAudioMetadataUtils;
 import com.aquarius.wizard.player.fx.ui.FxSampleData;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -127,21 +133,105 @@ public final class BackendCompatMusicService {
         if (songSummary == null || songSummary.sourceId() == null || songSummary.sourceId().isBlank()) {
             return songSummary;
         }
+        final String lyricText = loadLyricText(songSummary);
+        if (lyricText.isBlank()) {
+            return songSummary;
+        }
+        final List<LyricLine> lyricLines = parseLyrics(lyricText, songSummary);
+        return songSummary.withLyricLines(lyricLines);
+    }
+
+    public String loadLyricText(final SongSummary songSummary) {
+        if (songSummary == null || songSummary.sourceId() == null || songSummary.sourceId().isBlank()) {
+            return "";
+        }
         final JsonNode rootNode = getJsonResponse(
             this.serverBaseUrl + "/api/compat/netease/song/lyric?id=" + encode(songSummary.sourceId()) + "&lv=1&kv=1&tv=-1"
         );
-        if (rootNode == null) {
-            return songSummary;
-        }
-        final String lyricText = rootNode.path("lrc").path("lyric").asText("");
-        final List<LyricLine> lyricLines = parseLyrics(lyricText, songSummary);
-        return songSummary.withLyricLines(lyricLines);
+        return rootNode == null ? "" : rootNode.path("lrc").path("lyric").asText("");
     }
 
     public boolean isBackendManagedSong(final SongSummary songSummary) {
         return songSummary != null
             && songSummary.mediaSource() != null
             && songSummary.mediaSource().startsWith(this.serverBaseUrl + "/api/files/audio/");
+    }
+
+    public DownloadResult downloadSongToLocalLibrary(
+        final SongSummary songSummary,
+        final Path musicDirectory,
+        final Path lyricDirectory
+    ) {
+        if (songSummary == null) {
+            return DownloadResult.failed("当前没有可下载的歌曲。");
+        }
+        try {
+            Files.createDirectories(musicDirectory);
+            Files.createDirectories(lyricDirectory);
+            final String resolvedMediaSource = resolveDownloadMediaSource(songSummary);
+            if (resolvedMediaSource.isBlank()) {
+                return DownloadResult.failed("当前歌曲没有可用下载地址。");
+            }
+
+            final HttpRequest downloadRequest = HttpRequest.newBuilder(URI.create(resolvedMediaSource))
+                .GET()
+                .timeout(Duration.ofMinutes(2))
+                .build();
+            final HttpResponse<InputStream> downloadResponse = this.httpClient.send(
+                downloadRequest,
+                HttpResponse.BodyHandlers.ofInputStream()
+            );
+            if (downloadResponse.statusCode() >= 400) {
+                try (InputStream ignored = downloadResponse.body()) {
+                    return DownloadResult.failed("下载音频失败，状态码：" + downloadResponse.statusCode());
+                }
+            }
+
+            final String fileStem = sanitizeFileName(buildDownloadStem(songSummary));
+            final String extension = resolveAudioExtension(downloadResponse.headers());
+            final Path targetMusicFile = resolveAvailablePath(musicDirectory, fileStem, extension);
+            final Path temporaryFile = Files.createTempFile(musicDirectory, "wizard-download-", ".part");
+            try (InputStream inputStream = downloadResponse.body()) {
+                Files.copy(inputStream, temporaryFile, StandardCopyOption.REPLACE_EXISTING);
+            } catch (Exception exception) {
+                Files.deleteIfExists(temporaryFile);
+                throw exception;
+            }
+            try {
+                Files.move(temporaryFile, targetMusicFile, StandardCopyOption.REPLACE_EXISTING);
+            } finally {
+                Files.deleteIfExists(temporaryFile);
+            }
+
+            String resultMessage = "下载成功";
+            final LocalAudioMetadataUtils.AudioTagWriteResult tagWriteResult = LocalAudioMetadataUtils.writeMetadata(
+                targetMusicFile,
+                firstNonBlank(songSummary.title(), stripExtension(targetMusicFile.getFileName().toString())),
+                songSummary.artist(),
+                songSummary.album(),
+                songSummary.artworkUrl()
+            );
+            if (!tagWriteResult.message().isBlank()) {
+                resultMessage = tagWriteResult.success()
+                    ? "下载成功，" + tagWriteResult.message()
+                    : "下载成功，但" + tagWriteResult.message();
+            }
+
+            Path targetLyricFile = null;
+            final String lyricText = loadLyricText(songSummary);
+            if (!lyricText.isBlank()) {
+                try {
+                    targetLyricFile = lyricDirectory.resolve(stripExtension(targetMusicFile.getFileName().toString()) + ".lrc");
+                    Files.writeString(targetLyricFile, lyricText, StandardCharsets.UTF_8);
+                } catch (Exception exception) {
+                    resultMessage += "，歌词未能保存：" + safeMessage(exception.getMessage());
+                    targetLyricFile = null;
+                }
+            }
+            return new DownloadResult(true, resultMessage, targetMusicFile, targetLyricFile);
+        } catch (Exception exception) {
+            return DownloadResult.failed("下载失败：" + safeMessage(exception.getMessage()));
+        }
     }
 
     private List<SongSummary> mapSongs(final JsonNode songsNode) {
@@ -342,6 +432,109 @@ public final class BackendCompatMusicService {
 
     private String encode(final String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private String resolveDownloadMediaSource(final SongSummary songSummary) {
+        final String mediaSource = songSummary.mediaSource();
+        if (mediaSource != null && !mediaSource.isBlank()) {
+            return mediaSource;
+        }
+        if (songSummary.sourceId() == null || songSummary.sourceId().isBlank()) {
+            return "";
+        }
+        return resolvePlayerUrls(List.of(songSummary.sourceId())).getOrDefault(songSummary.sourceId(), "");
+    }
+
+    private String buildDownloadStem(final SongSummary songSummary) {
+        final String title = firstNonBlank(songSummary.title(), firstNonBlank(songSummary.sourceId(), "backend-track"));
+        if (songSummary.artist() == null || songSummary.artist().isBlank()) {
+            return title;
+        }
+        return title + "-" + songSummary.artist();
+    }
+
+    private Path resolveAvailablePath(final Path directory, final String fileStem, final String extension) {
+        Path candidate = directory.resolve(fileStem + extension);
+        if (!Files.exists(candidate)) {
+            return candidate;
+        }
+        int index = 1;
+        while (true) {
+            candidate = directory.resolve(fileStem + " (" + index + ")" + extension);
+            if (!Files.exists(candidate)) {
+                return candidate;
+            }
+            index++;
+        }
+    }
+
+    private String resolveAudioExtension(final HttpHeaders headers) {
+        final String contentDisposition = headers.firstValue("Content-Disposition").orElse("");
+        final String headerFileName = parseHeaderFileName(contentDisposition);
+        final int lastDot = headerFileName.lastIndexOf('.');
+        if (lastDot > 0 && lastDot < headerFileName.length() - 1) {
+            return headerFileName.substring(lastDot);
+        }
+        final String contentType = headers.firstValue("Content-Type").orElse("").toLowerCase(Locale.ROOT);
+        if (contentType.contains("flac")) {
+            return ".flac";
+        }
+        if (contentType.contains("x-wav") || contentType.contains("wav")) {
+            return ".wav";
+        }
+        if (contentType.contains("aac")) {
+            return ".aac";
+        }
+        if (contentType.contains("mp4") || contentType.contains("m4a")) {
+            return ".m4a";
+        }
+        if (contentType.contains("mpeg")) {
+            return ".mp3";
+        }
+        return ".mp3";
+    }
+
+    private String parseHeaderFileName(final String contentDisposition) {
+        if (contentDisposition == null || contentDisposition.isBlank()) {
+            return "";
+        }
+        for (final String segment : contentDisposition.split(";")) {
+            final String trimmedSegment = segment.trim();
+            if (trimmedSegment.startsWith("filename=")) {
+                return trimmedSegment.substring("filename=".length()).replace("\"", "").trim();
+            }
+        }
+        return "";
+    }
+
+    private String sanitizeFileName(final String value) {
+        final String sanitized = value.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+        return sanitized.isBlank() ? "backend-track" : sanitized;
+    }
+
+    private String stripExtension(final String fileName) {
+        final int lastDot = fileName == null ? -1 : fileName.lastIndexOf('.');
+        return lastDot > 0 ? fileName.substring(0, lastDot) : firstNonBlank(fileName, "backend-track");
+    }
+
+    private String firstNonBlank(final String candidate, final String fallback) {
+        return candidate == null || candidate.isBlank() ? fallback : candidate;
+    }
+
+    private String safeMessage(final String message) {
+        return firstNonBlank(message, "未知原因");
+    }
+
+    public record DownloadResult(
+        boolean success,
+        String message,
+        Path musicFile,
+        Path lyricFile
+    ) {
+
+        public static DownloadResult failed(final String message) {
+            return new DownloadResult(false, message, null, null);
+        }
     }
 
 }

@@ -16,8 +16,10 @@
 
 - 本地音乐导入、扫描、播放
 - 本地 `.lrc` 歌词加载
+- 本地音频标签与内嵌封面读取
 - 在线歌单、歌单详情、搜索、歌词、播放地址由自建后端承接
 - 后端在线曲库导入、刷新、音频流访问
+- 在线歌曲可下载到 `./LocalMusic`，并写入标题、歌手、专辑、封面标签
 - 迷你模式、桌面歌词、系统托盘
 
 ## 模块结构
@@ -106,12 +108,8 @@ server.base-url=http://127.0.0.1:18080
 - 第三方直连逻辑已移除
 - 默认运行形态已落到 `Spring Boot 4 + SQLite`
 
-当前仍未完成的一项是：
-
-- “下载当前音乐” 还没有正式改成由后端复制在线资源到本地音乐目录
-
 ## 文档
 
 - 长期维护约束：`docs/maintenance-requirements.md`
-- 第二阶段需求与状态：`docs/requirements-phase2.md`
+- 第二阶段归档：`docs/archive/requirements-phase2.md`
 - 第一阶段历史归档：`docs/archive/maintenance-requirements-phase1.md`
