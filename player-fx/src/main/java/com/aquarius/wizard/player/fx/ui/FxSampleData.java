@@ -1,8 +1,8 @@
 package com.aquarius.wizard.player.fx.ui;
 
-import com.aquarius.wizard.player.domain.model.LyricLine;
-import com.aquarius.wizard.player.domain.model.PlaylistSummary;
-import com.aquarius.wizard.player.domain.model.SongSummary;
+import com.aquarius.wizard.player.model.LyricLine;
+import com.aquarius.wizard.player.model.PlaylistSummary;
+import com.aquarius.wizard.player.model.SongSummary;
 
 import java.time.Duration;
 import java.util.List;
@@ -349,4 +349,5 @@ public final class FxSampleData {
         return resource == null ? "" : resource.toExternalForm();
     }
 }
+
 

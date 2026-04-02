@@ -21,12 +21,7 @@
         </dependency>
         <dependency>
             <groupId>com.aquarius.wizard</groupId>
-            <artifactId>player-domain</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.aquarius.wizard</groupId>
-            <artifactId>player-infra</artifactId>
+            <artifactId>player-model</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

@@ -1,6 +1,6 @@
 package com.aquarius.wizard.player.fx.ui;
 
-import com.aquarius.wizard.player.domain.model.SongSummary;
+import com.aquarius.wizard.player.model.SongSummary;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import org.jaudiotagger.audio.AudioFile;
@@ -119,4 +119,5 @@ public final class ArtworkImageLoader {
         }
     }
 }
+
 

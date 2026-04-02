@@ -1,6 +1,6 @@
 package com.aquarius.wizard.player.fx.playback;
 
-import com.aquarius.wizard.player.domain.model.SongSummary;
+import com.aquarius.wizard.player.model.SongSummary;
 import javafx.beans.value.ChangeListener;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaException;
@@ -176,4 +176,5 @@ public final class AudioPlaybackService {
         }
     }
 }
+
 

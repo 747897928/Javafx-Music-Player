@@ -1,5 +1,20 @@
 # 第二阶段需求文档
 
+## 0. 当前状态
+
+截至当前仓库状态，第二阶段的核心目标已经完成：
+
+- `player-fx` 在线模块已切到自建 `player-server`
+- `player-fx` 不再直连第三方音乐平台
+- 后端已提供迁移期 compat 接口、在线文件流接口、在线导入与刷新接口
+- 在线模块默认运行形态已落到 `Spring Boot 4 + SQLite + 相对路径目录`
+- 本地音乐模块与后端在线模块的存储目录已分离
+
+当前仍未完成的项：
+
+- `下载当前音乐` 还没有改成“通过后端把在线资源复制到本地音乐目录”的正式实现
+- JavaFX 真机界面的手工回归仍建议在发布前再做一轮完整点击验证
+
 ## 1. 阶段目标
 
 第二阶段目标是：
@@ -14,7 +29,7 @@
 
 - `player-fx` 不再直接请求 `music.163.com`
 - `player-fx` 不再保留对 HTML 抓取和网易云 JSON 的直接解析逻辑
-- 旧 `LegacyOnlineMusicService` 可以下线，或仅在短期回退开关下保留
+- 旧 `LegacyOnlineMusicService` 已下线
 - 本地模块主链路保持现状，主要新增工作集中在“在线交互改为自建后端承载”
 
 ## 2. 阶段输入
@@ -34,7 +49,7 @@
 
 Phase 1 历史记录见：
 
-- `docs/tobedemise/maintenance-requirements-phase1.md`
+- `docs/archive/maintenance-requirements-phase1.md`
 
 ## 3. 核心策略
 
@@ -67,7 +82,8 @@ Phase 1 历史记录见：
 必须遵循：
 
 - 兼容结构只存在于 `player-server` 的 controller / response adapter 层
-- `player-domain`、`player-infra`、`player-common` 继续使用项目自己的语义模型
+- `player-model`、`player-common` 继续使用项目自己的语义模型
+- 文件系统、元数据同步与存储布局能力收敛在 `player-server` 内部的 `support / repository / mapper` 等包中
 - 桌面端只消费当前真正用到的字段子集，禁止为了“看起来像”而复制整套历史字段
 
 ### 3.3 数据来源
@@ -91,7 +107,7 @@ Phase 1 历史记录见：
 
 ## 4. 当前兼容接口范围
 
-基于当前 `player-fx` 中 `LegacyOnlineMusicService` 的真实消费情况，第二阶段只需要兼容以下接口语义。
+基于历史 `LegacyOnlineMusicService` 的真实消费情况，第二阶段只需要兼容以下接口语义。
 
 ### 4.1 推荐歌单
 
@@ -227,8 +243,8 @@ Phase 1 历史记录见：
 ### 5.1 分层要求
 
 - controller 层负责兼容响应拼装
-- application / service 层负责用项目内部语义组织用例
-- infra 层负责读取数据库、文件系统、歌词文件、封面文件
+- service 层负责用项目内部语义组织用例
+- repository / mapper / support 层负责读取数据库、文件系统、歌词文件、封面文件
 - 不在 controller 中直接写文件扫描和复杂组装逻辑
 
 ### 5.2 兼容字段要求
@@ -277,6 +293,8 @@ Phase 1 历史记录见：
 5. 播放地址
 6. 下载动作对接后端
 
+当前状态：前 1-5 项已完成，第 6 项尚未完成
+
 ## 7. 清理目标
 
 第二阶段收口前，至少完成以下清理：
@@ -297,6 +315,13 @@ Phase 1 历史记录见：
   - 歌词显示
   - 音频播放
 - 关闭 legacy 直连逻辑后，主链路仍可用
+
+当前验证结论：
+
+- 编译与打包链路已验证通过
+- 后端 compat 接口、在线导入、在线刷新与音频流接口已验证
+- JavaFX 启动链路已验证
+- GUI 手工回归仍建议在发布前执行
 
 ## 9. 后续演进
 

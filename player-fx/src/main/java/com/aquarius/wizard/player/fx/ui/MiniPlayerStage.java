@@ -1,6 +1,6 @@
 package com.aquarius.wizard.player.fx.ui;
 
-import com.aquarius.wizard.player.domain.model.SongSummary;
+import com.aquarius.wizard.player.model.SongSummary;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
@@ -336,4 +336,5 @@ public final class MiniPlayerStage extends Stage {
             .getVisualBounds();
     }
 }
+
 

@@ -1,6 +1,6 @@
 package com.aquarius.wizard.player.fx.ui;
 
-import com.aquarius.wizard.player.domain.model.SongSummary;
+import com.aquarius.wizard.player.model.SongSummary;
 import com.aquarius.wizard.player.fx.local.LegacyLocalLibraryService;
 import com.aquarius.wizard.player.fx.playback.AudioPlaybackService;
 import com.aquarius.wizard.player.fx.remote.BackendCompatMusicService;
@@ -2415,3 +2415,4 @@ public final class PlayerShellView {
         SINGLE_LOOP
     }
 }
+

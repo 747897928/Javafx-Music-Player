@@ -1,8 +1,8 @@
 package com.aquarius.wizard.player.server.config;
 
 import com.aquarius.wizard.player.common.path.WorkspacePathResolver;
-import com.aquarius.wizard.player.infra.storage.StorageLayout;
-import com.aquarius.wizard.player.infra.storage.StorageLayoutResolver;
+import com.aquarius.wizard.player.server.support.storage.StorageLayout;
+import com.aquarius.wizard.player.server.support.storage.StorageLayoutResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -36,4 +36,5 @@ public class StorageConfiguration {
         return storageLayout;
     }
 }
+
 

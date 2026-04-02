@@ -1,10 +1,10 @@
 package com.aquarius.wizard.player.fx.remote;
 
-import com.aquarius.wizard.player.domain.model.LyricLine;
-import com.aquarius.wizard.player.domain.model.SongSummary;
+import com.aquarius.wizard.player.common.json.JacksonUtils;
+import com.aquarius.wizard.player.model.LyricLine;
+import com.aquarius.wizard.player.model.SongSummary;
 import com.aquarius.wizard.player.fx.ui.FxSampleData;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,7 +29,6 @@ import java.util.regex.Pattern;
  */
 public final class BackendCompatMusicService {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Pattern LRC_PATTERN = Pattern.compile("\\[(\\d{2}):(\\d{2})(?:\\.(\\d{1,3}))?](.*)");
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -273,7 +272,7 @@ public final class BackendCompatMusicService {
             if (response.statusCode() >= 400 || response.body() == null || response.body().isBlank()) {
                 return null;
             }
-            return OBJECT_MAPPER.readTree(response.body());
+            return JacksonUtils.readTree(response.body());
         } catch (IOException | InterruptedException exception) {
             if (exception instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
@@ -346,3 +345,4 @@ public final class BackendCompatMusicService {
     }
 
 }
+

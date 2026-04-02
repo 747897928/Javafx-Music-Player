@@ -1,8 +1,8 @@
 package com.aquarius.wizard.player.fx.local;
 
 import com.aquarius.wizard.player.common.path.WorkspacePathResolver;
-import com.aquarius.wizard.player.domain.model.LyricLine;
-import com.aquarius.wizard.player.domain.model.SongSummary;
+import com.aquarius.wizard.player.model.LyricLine;
+import com.aquarius.wizard.player.model.SongSummary;
 import com.aquarius.wizard.player.fx.ui.FxSampleData;
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
@@ -328,4 +328,5 @@ public final class LegacyLocalLibraryService {
         }
     }
 }
+
 

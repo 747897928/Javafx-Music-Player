@@ -1,7 +1,7 @@
 package com.aquarius.wizard.player.fx.ui;
 
-import com.aquarius.wizard.player.domain.model.LyricLine;
-import com.aquarius.wizard.player.domain.model.SongSummary;
+import com.aquarius.wizard.player.model.LyricLine;
+import com.aquarius.wizard.player.model.SongSummary;
 import javafx.animation.Animation;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
@@ -611,4 +611,5 @@ public final class NowPlayingDrawerView extends StackPane {
         }
     }
 }
+
 

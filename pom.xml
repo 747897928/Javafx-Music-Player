@@ -21,8 +21,7 @@
 
     <modules>
         <module>player-common</module>
-        <module>player-domain</module>
-        <module>player-infra</module>
+        <module>player-model</module>
         <module>player-server</module>
         <module>player-fx</module>
     </modules>

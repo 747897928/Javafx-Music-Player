@@ -1,7 +1,7 @@
 package com.aquarius.wizard.player.fx.remote;
 
+import com.aquarius.wizard.player.common.json.JacksonUtils;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,7 +25,6 @@ import java.util.Locale;
 public final class BackendOnlineLibraryService {
 
     private static final List<String> IMPORTABLE_SUFFIXES = List.of(".mp3", ".wav", ".m4a", ".flac", ".aac", ".pcm", ".lrc");
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NORMAL)
@@ -48,11 +47,10 @@ public final class BackendOnlineLibraryService {
             .timeout(Duration.ofSeconds(20))
             .header("Accept", "application/json")
             .build();
-        final JsonNode rootNode = sendJsonRequest(request);
+        final JsonNode dataNode = sendJsonRequest(request).path("data");
         return new RefreshResult(
-            textOr(rootNode, "status", "ok"),
-            rootNode.path("trackCount").asInt(0),
-            textOr(rootNode, "synchronizedAtUtc", "")
+            dataNode.path("trackCount").asInt(0),
+            textOr(dataNode, "synchronizedAtUtc", "")
         );
     }
 
@@ -93,15 +91,15 @@ public final class BackendOnlineLibraryService {
             if (responseBody == null || responseBody.isBlank()) {
                 throw new IllegalStateException("Backend online import returned an empty response.");
             }
-            final JsonNode rootNode = OBJECT_MAPPER.readTree(responseBody);
+            final JsonNode dataNode = JacksonUtils.readTree(responseBody).path("data");
             return new ImportResult(
-                rootNode.path("importedAudioCount").asInt(0),
-                rootNode.path("importedLyricCount").asInt(0),
-                toStringList(rootNode.path("storedAudioFiles")),
-                toStringList(rootNode.path("storedLyricFiles")),
-                toStringList(rootNode.path("ignoredFiles")),
-                rootNode.path("trackCount").asInt(0),
-                textOr(rootNode, "synchronizedAtUtc", "")
+                dataNode.path("importedAudioCount").asInt(0),
+                dataNode.path("importedLyricCount").asInt(0),
+                toStringList(dataNode.path("storedAudioFiles")),
+                toStringList(dataNode.path("storedLyricFiles")),
+                toStringList(dataNode.path("ignoredFiles")),
+                dataNode.path("trackCount").asInt(0),
+                textOr(dataNode, "synchronizedAtUtc", "")
             );
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to import files into the backend online library.", exception);
@@ -117,7 +115,7 @@ public final class BackendOnlineLibraryService {
             if (response.statusCode() >= 400 || response.body() == null || response.body().isBlank()) {
                 throw new IllegalStateException("Backend request failed with status " + response.statusCode() + ".");
             }
-            return OBJECT_MAPPER.readTree(response.body());
+            return JacksonUtils.readTree(response.body());
         } catch (IOException | InterruptedException exception) {
             if (exception instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
@@ -195,7 +193,7 @@ public final class BackendOnlineLibraryService {
         return fileName.replace("\\", "_").replace("\"", "'");
     }
 
-    public record RefreshResult(String status, int trackCount, String synchronizedAtUtc) {
+    public record RefreshResult(int trackCount, String synchronizedAtUtc) {
     }
 
     public record ImportResult(

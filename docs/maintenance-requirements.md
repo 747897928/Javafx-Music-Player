@@ -4,7 +4,7 @@
 
 本文件只保留当前仍然长期有效的维护约束，不再混入阶段性迁移记录。
 
-- Phase 1 历史记录已归档到 `docs/tobedemise/maintenance-requirements-phase1.md`
+- Phase 1 历史记录已归档到 `docs/archive/maintenance-requirements-phase1.md`
 - 当前进入第二阶段时，执行口径以 `docs/requirements-phase2.md` 为准
 - 若阶段目标发生变化，优先更新对应阶段文档；若长期约束变化，再更新本文件
 
@@ -43,11 +43,10 @@
 
 ### 3.3 架构边界
 
-- `player-server` 负责 REST API、配置、数据库、文件访问与业务编排
+- `player-server` 负责 REST API、配置、数据库、文件访问、存储适配与业务编排
 - `player-fx` 负责 UI、播放控制、窗口交互与用户操作反馈
-- `player-domain` 负责领域模型与领域接口
-- `player-infra` 负责持久化、文件系统与外部适配实现
-- `player-common` 负责通用模型、常量、异常与基础工具
+- `player-model` 负责桌面端与服务端共享的轻量业务模型
+- `player-common` 负责通用响应、JSON、路径与基础工具
 
 严格禁止：
 
