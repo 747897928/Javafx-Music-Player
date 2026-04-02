@@ -4,7 +4,7 @@ import java.time.Duration;
 import java.util.List;
 
 /**
- * Lightweight song view model used during the first migration stage.
+ * Lightweight song view model shared by the rebuilt desktop shell.
  *
  * @param title           song title
  * @param artist          artist name
@@ -14,9 +14,9 @@ import java.util.List;
  * @param lyricLines      timed lyric lines
  * @param backgroundLabel background hint displayed in the drawer
  * @param mediaSource     playable media source URI used by the desktop client during migration
- * @param sourceType      source type such as local/sample/legacy-online
+ * @param sourceType      source type such as local/sample/backend-compat
  * @param sourceId        source-specific identifier
- * @param artworkUrl      optional artwork url used by legacy compatibility mode
+ * @param artworkUrl      optional artwork url used by backend compat mode
  */
 public record SongSummary(
     String title,
@@ -64,8 +64,12 @@ public record SongSummary(
         );
     }
 
-    public boolean isLegacyOnlineSource() {
-        return "legacy-online".equals(this.sourceType);
+    public boolean isBackendCompatSource() {
+        return "backend-compat".equals(this.sourceType) || "legacy-online".equals(this.sourceType);
+    }
+
+    public boolean isBackendCompatSearchSource() {
+        return "backend-compat-search".equals(this.sourceType) || "legacy-online-search".equals(this.sourceType);
     }
 
     public boolean isLocalSource() {

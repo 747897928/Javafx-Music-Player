@@ -17,8 +17,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Loads artwork for local and legacy-online songs while keeping resource
- * fallback handling in one place.
+ * Loads artwork for local songs and backend compat responses while keeping
+ * resource fallback handling in one place.
  */
 public final class ArtworkImageLoader {
 

@@ -1,13 +1,10 @@
-package com.aquarius.wizard.player.fx.legacy;
+package com.aquarius.wizard.player.fx.remote;
 
 import com.aquarius.wizard.player.domain.model.LyricLine;
 import com.aquarius.wizard.player.domain.model.SongSummary;
 import com.aquarius.wizard.player.fx.ui.FxSampleData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 
 import java.io.IOException;
 import java.net.URI;
@@ -16,73 +13,65 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Temporary legacy online adapter used to migrate the old NetEase-based flows
- * into the rebuilt JavaFX shell before the Spring Boot backend replaces them.
+ * Reads Spring Boot compat endpoints that temporarily expose a NetEase-like
+ * JSON subset while the JavaFX client is switching off the old direct calls.
  */
-public final class LegacyOnlineMusicService {
+public final class BackendCompatMusicService {
 
-    private static final int FEATURED_PLAYLIST_LIMIT = 18;
+    private static final String DEFAULT_SERVER_BASE_URL = "http://127.0.0.1:18080";
+    private static final String SERVER_BASE_URL_PROPERTY = "wizard.player.server.base-url";
+    private static final String SERVER_BASE_URL_ENV = "WIZARD_PLAYER_SERVER_BASE_URL";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Pattern LRC_PATTERN = Pattern.compile("\\[(\\d{2}):(\\d{2})(?:\\.(\\d{1,3}))?](.*)");
-    private static final String USER_AGENT =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0 Safari/537.36";
-    private static final String REFERER = "https://music.163.com/";
 
     private final HttpClient httpClient = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NORMAL)
-        .connectTimeout(Duration.ofSeconds(12))
+        .connectTimeout(Duration.ofSeconds(8))
         .build();
 
+    private final String serverBaseUrl;
+
+    public BackendCompatMusicService() {
+        this(resolveServerBaseUrl());
+    }
+
+    BackendCompatMusicService(final String serverBaseUrl) {
+        this.serverBaseUrl = normalizeBaseUrl(serverBaseUrl);
+    }
+
     public List<FxSampleData.PlaylistDetail> loadFeaturedPlaylists() {
-        final int offset = ThreadLocalRandom.current().nextInt(0, 38) * 35;
-        final String html = getTextResponse(
-            "https://music.163.com/discover/playlist/?order=hot&cat=全部&limit=35&offset=" + offset
-        );
-        if (html.isBlank()) {
+        final JsonNode rootNode = getJsonResponse(this.serverBaseUrl + "/api/compat/netease/personalized?limit=18");
+        if (rootNode == null || !rootNode.path("result").isArray()) {
             return List.of();
         }
-
-        final Document document = Jsoup.parse(html);
         final List<FxSampleData.PlaylistDetail> result = new ArrayList<>();
-        for (final Element coverElement : document.select(".u-cover.u-cover-1")) {
-            if (result.size() >= FEATURED_PLAYLIST_LIMIT) {
-                break;
-            }
-            final Element anchor = coverElement.selectFirst("a[href*=/playlist?id=]");
-            if (anchor == null) {
-                continue;
-            }
-            final String playlistId = anchor.attr("href").replace("/playlist?id=", "").trim();
-            final String title = anchor.attr("title").trim();
+        for (final JsonNode itemNode : rootNode.path("result")) {
+            final String playlistId = itemNode.path("id").asText("");
+            final String title = textOr(itemNode, "name", "在线曲库");
+            final String copywriter = textOr(itemNode, "copywriter", "由 Spring Boot 4 在线模块提供。");
+            final String imageUrl = textOr(itemNode, "picUrl", "");
             if (playlistId.isBlank() || title.isBlank()) {
                 continue;
             }
-            final String imageUrl = coverElement.selectFirst("img") == null
-                ? ""
-                : coverElement.selectFirst("img").attr("src").replace("?param=140y140", "?param=300y300");
             result.add(new FxSampleData.PlaylistDetail(
                 title,
-                "Legacy Online / 推荐歌单",
-                "旧版在线推荐歌单，点击后加载歌单详情。",
+                "在线 / Spring Boot 4",
+                copywriter.isBlank() ? "由 Spring Boot 4 在线模块提供。" : copywriter,
                 colorFromSeed(title),
                 coverMark(title),
                 List.of(),
-                "legacy-online",
+                "backend-compat",
                 playlistId,
                 imageUrl
             ));
@@ -92,26 +81,25 @@ public final class LegacyOnlineMusicService {
 
     public FxSampleData.PlaylistDetail loadPlaylist(final String playlistId) {
         final JsonNode rootNode = getJsonResponse(
-            "https://music.163.com/api/playlist/detail?id=" + encode(playlistId)
+            this.serverBaseUrl + "/api/compat/netease/playlist/detail?id=" + encode(playlistId)
         );
         if (rootNode == null || rootNode.path("result").isMissingNode()) {
-            return emptyLegacyPlaylist("歌单加载失败", playlistId);
+            return emptyCompatPlaylist("歌单加载失败", playlistId);
         }
-
         final JsonNode resultNode = rootNode.path("result");
-        final String title = textOr(resultNode, "name", "Legacy Playlist");
+        final String title = textOr(resultNode, "name", "在线曲库");
         final String tags = joinTextNodes(resultNode.path("tags"));
         final String description = textOr(resultNode, "description", "该歌单暂无详细介绍。").replace("\n", " ").trim();
         final String coverImageUrl = textOr(resultNode, "coverImgUrl", "");
         final List<SongSummary> songs = mapSongs(resultNode.path("tracks"));
         return new FxSampleData.PlaylistDetail(
             title,
-            tags.isBlank() ? "音乐" : tags,
+            tags.isBlank() ? "在线 / 后端" : tags,
             description.isBlank() ? "该歌单暂无详细介绍。" : description,
             colorFromSeed(title),
             coverMark(title),
             songs,
-            "legacy-online",
+            "backend-compat",
             playlistId,
             coverImageUrl
         );
@@ -119,21 +107,21 @@ public final class LegacyOnlineMusicService {
 
     public FxSampleData.PlaylistDetail searchSongs(final String keyword) {
         final JsonNode rootNode = getJsonResponse(
-            "https://music.163.com/api/search/get/web?s=" + encode(keyword)
+            this.serverBaseUrl + "/api/compat/netease/search/get/web?s=" + encode(keyword)
                 + "&type=1&offset=0&total=true&limit=20"
         );
         if (rootNode == null) {
-            return emptyLegacyPlaylist(keyword, "search");
+            return emptyCompatPlaylist(keyword, "search");
         }
         final List<SongSummary> songs = mapSongs(rootNode.path("result").path("songs"));
         return new FxSampleData.PlaylistDetail(
             keyword,
-            "Legacy Online / 搜索结果",
-            songs.isEmpty() ? "未搜索到可用歌曲。" : "旧版在线搜索结果，当前按歌曲列表方式展示。",
+            "在线搜索结果",
+            songs.isEmpty() ? "未搜索到匹配歌曲。" : "由 Spring Boot 4 在线模块返回的搜索结果。",
             colorFromSeed(keyword),
             coverMark(keyword),
             songs,
-            "legacy-online-search",
+            "backend-compat-search",
             keyword,
             ""
         );
@@ -144,7 +132,7 @@ public final class LegacyOnlineMusicService {
             return songSummary;
         }
         final JsonNode rootNode = getJsonResponse(
-            "https://music.163.com/api/song/lyric?id=" + encode(songSummary.sourceId()) + "&lv=1&kv=1&tv=-1"
+            this.serverBaseUrl + "/api/compat/netease/song/lyric?id=" + encode(songSummary.sourceId()) + "&lv=1&kv=1&tv=-1"
         );
         if (rootNode == null) {
             return songSummary;
@@ -154,53 +142,16 @@ public final class LegacyOnlineMusicService {
         return songSummary.withLyricLines(lyricLines);
     }
 
-    public DownloadResult downloadSong(
-        final SongSummary songSummary,
-        final Path musicDirectory,
-        final Path lyricDirectory
-    ) {
-        if (songSummary == null) {
-            return DownloadResult.failed("当前没有可下载的歌曲。");
-        }
-        try {
-            Files.createDirectories(musicDirectory);
-            Files.createDirectories(lyricDirectory);
-            String mediaSource = songSummary.mediaSource();
-            if (mediaSource == null || mediaSource.isBlank()) {
-                mediaSource = resolvePlayerUrls(List.of(songSummary.sourceId())).getOrDefault(songSummary.sourceId(), "");
-            }
-            if (mediaSource == null || mediaSource.isBlank()) {
-                return DownloadResult.failed("当前歌曲没有可用下载地址。");
-            }
-
-            final String fileStem = sanitizeFileName(songSummary.title() + "-" + songSummary.artist());
-            final Path targetMusicFile = musicDirectory.resolve(fileStem + ".mp3");
-            final HttpRequest musicRequest = baseRequest(mediaSource).GET().build();
-            final HttpResponse<Path> downloadResponse = this.httpClient.send(
-                musicRequest,
-                HttpResponse.BodyHandlers.ofFile(targetMusicFile)
-            );
-            if (downloadResponse.statusCode() >= 400) {
-                return DownloadResult.failed("下载音频失败，状态码：" + downloadResponse.statusCode());
-            }
-
-            final SongSummary songWithLyrics = loadLyrics(songSummary);
-            if (songWithLyrics.lyricLines() != null && !songWithLyrics.lyricLines().isEmpty()) {
-                final Path lyricFile = lyricDirectory.resolve(fileStem + ".lrc");
-                final String lyricContent = toLrc(songWithLyrics.lyricLines());
-                Files.writeString(lyricFile, lyricContent, StandardCharsets.UTF_8);
-            }
-            return new DownloadResult(true, "下载成功", targetMusicFile);
-        } catch (Exception exception) {
-            return DownloadResult.failed("下载失败：" + exception.getMessage());
-        }
+    public boolean isBackendManagedSong(final SongSummary songSummary) {
+        return songSummary != null
+            && songSummary.mediaSource() != null
+            && songSummary.mediaSource().startsWith(this.serverBaseUrl + "/api/files/audio/");
     }
 
     private List<SongSummary> mapSongs(final JsonNode songsNode) {
         if (songsNode == null || !songsNode.isArray() || songsNode.isEmpty()) {
             return List.of();
         }
-
         final List<JsonNode> trackNodes = new ArrayList<>();
         final List<String> songIds = new ArrayList<>();
         for (final JsonNode songNode : songsNode) {
@@ -224,9 +175,9 @@ public final class LegacyOnlineMusicService {
                 Duration.ofMillis(Math.max(0L, durationMillis)),
                 colorFromSeed(title + artist),
                 fallbackLyrics(title, artist, album),
-                "Legacy Online",
+                "Online Module",
                 playerUrls.getOrDefault(songId, ""),
-                "legacy-online",
+                "backend-compat",
                 songId,
                 artworkUrl
             ));
@@ -244,9 +195,12 @@ public final class LegacyOnlineMusicService {
         if (validSongIds.isEmpty()) {
             return Map.of();
         }
-        final String ids = "[" + validSongIds.stream().map(id -> "\"" + id + "\"").reduce((a, b) -> a + "," + b).orElse("") + "]";
+        final String ids = "[" + validSongIds.stream()
+            .map(id -> "\"" + id + "\"")
+            .reduce((left, right) -> left + "," + right)
+            .orElse("") + "]";
         final JsonNode rootNode = getJsonResponse(
-            "https://music.163.com/api/song/enhance/player/url?ids=" + encode(ids) + "&br=128000"
+            this.serverBaseUrl + "/api/compat/netease/song/enhance/player/url?ids=" + encode(ids) + "&br=128000"
         );
         if (rootNode == null || !rootNode.path("data").isArray()) {
             return Map.of();
@@ -292,21 +246,43 @@ public final class LegacyOnlineMusicService {
         return List.of(
             new LyricLine(Duration.ZERO, title),
             new LyricLine(Duration.ofSeconds(8), artist.isBlank() ? "未知歌手" : artist),
-            new LyricLine(Duration.ofSeconds(16), album.isBlank() ? "在线音乐" : album),
-            new LyricLine(Duration.ofSeconds(24), "旧版在线歌词暂未返回，已回退到基础信息。")
+            new LyricLine(Duration.ofSeconds(16), album.isBlank() ? "在线曲库" : album),
+            new LyricLine(Duration.ofSeconds(24), "当前歌词由 Spring Boot 4 在线模块提供。")
         );
     }
 
-    private String toLrc(final List<LyricLine> lyricLines) {
-        final StringBuilder builder = new StringBuilder();
-        for (final LyricLine lyricLine : lyricLines) {
-            final long totalMillis = lyricLine.position().toMillis();
-            final long minutes = totalMillis / 60000;
-            final long seconds = (totalMillis % 60000) / 1000;
-            final long millis = totalMillis % 1000;
-            builder.append(String.format(Locale.ROOT, "[%02d:%02d.%03d]%s%n", minutes, seconds, millis, lyricLine.content()));
+    private FxSampleData.PlaylistDetail emptyCompatPlaylist(final String title, final String playlistId) {
+        return new FxSampleData.PlaylistDetail(
+            title,
+            "后端接管中",
+            "当前未能从 Spring Boot 4 在线模块加载数据。",
+            colorFromSeed(title),
+            coverMark(title),
+            List.of(),
+            "backend-compat",
+            playlistId == null ? "" : playlistId,
+            ""
+        );
+    }
+
+    private JsonNode getJsonResponse(final String uri) {
+        final HttpRequest request = HttpRequest.newBuilder(URI.create(uri))
+            .GET()
+            .timeout(Duration.ofSeconds(15))
+            .header("Accept", "application/json")
+            .build();
+        try {
+            final HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() >= 400 || response.body() == null || response.body().isBlank()) {
+                return null;
+            }
+            return OBJECT_MAPPER.readTree(response.body());
+        } catch (IOException | InterruptedException exception) {
+            if (exception instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            return null;
         }
-        return builder.toString();
     }
 
     private String firstArtist(final JsonNode songNode) {
@@ -320,9 +296,9 @@ public final class LegacyOnlineMusicService {
     private String firstAlbum(final JsonNode songNode) {
         final JsonNode albumNode = songNode.path("album").isObject() ? songNode.path("album") : songNode.path("al");
         if (!albumNode.isObject()) {
-            return "在线音乐";
+            return "在线曲库";
         }
-        return textOr(albumNode, "name", "在线音乐");
+        return textOr(albumNode, "name", "在线曲库");
     }
 
     private String firstArtwork(final JsonNode songNode) {
@@ -330,109 +306,64 @@ public final class LegacyOnlineMusicService {
         if (!albumNode.isObject()) {
             return "";
         }
-        return textOr(albumNode, "picUrl", textOr(albumNode, "blurPicUrl", ""));
+        return textOr(albumNode, "picUrl", "");
     }
 
-    private FxSampleData.PlaylistDetail emptyLegacyPlaylist(final String title, final String sourceId) {
-        return new FxSampleData.PlaylistDetail(
-            title,
-            "Legacy Online",
-            "当前未获取到可用在线数据。",
-            colorFromSeed(title),
-            coverMark(title),
-            List.of(),
-            "legacy-online",
-            sourceId,
-            ""
-        );
-    }
-
-    private JsonNode getJsonResponse(final String url) {
-        try {
-            final String body = getTextResponse(url);
-            return body.isBlank() ? null : OBJECT_MAPPER.readTree(body);
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    private String getTextResponse(final String url) {
-        try {
-            final HttpRequest request = baseRequest(url).GET().build();
-            final HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            if (response.statusCode() >= 400) {
-                return "";
-            }
-            return response.body();
-        } catch (Exception ignored) {
-            return "";
-        }
-    }
-
-    private HttpRequest.Builder baseRequest(final String url) {
-        return HttpRequest.newBuilder(URI.create(url))
-            .timeout(Duration.ofSeconds(12))
-            .header("User-Agent", USER_AGENT)
-            .header("Referer", REFERER)
-            .header("Accept", "*/*");
-    }
-
-    private String joinTextNodes(final JsonNode jsonNode) {
-        if (jsonNode == null || !jsonNode.isArray()) {
+    private String joinTextNodes(final JsonNode textNodes) {
+        if (textNodes == null || !textNodes.isArray() || textNodes.isEmpty()) {
             return "";
         }
         final List<String> values = new ArrayList<>();
-        for (final JsonNode item : jsonNode) {
-            final String value = item.asText("");
-            if (!value.isBlank()) {
-                values.add(value);
+        for (final JsonNode textNode : textNodes) {
+            final String text = textNode.asText("");
+            if (!text.isBlank()) {
+                values.add(text);
             }
         }
         return String.join(" / ", values);
     }
 
-    private String textOr(final JsonNode jsonNode, final String fieldName, final String fallback) {
-        if (jsonNode == null || jsonNode.isMissingNode()) {
+    private String textOr(final JsonNode node, final String fieldName, final String fallback) {
+        if (node == null || fieldName == null || fieldName.isBlank()) {
             return fallback;
         }
-        final String value = jsonNode.path(fieldName).asText("");
+        final String value = node.path(fieldName).asText("");
         return value == null || value.isBlank() ? fallback : value;
     }
 
     private String colorFromSeed(final String seed) {
-        final String[] palette = {"#5a8dff", "#ff8d7a", "#8d78ff", "#2dc8aa", "#ffc95c", "#ff6d98"};
-        final int index = Math.abs(seed.hashCode()) % palette.length;
-        return palette[index];
+        final String[] palette = {"#4d8fff", "#ff8d7a", "#8d78ff", "#2dc8aa", "#ffc95c", "#ff6d98", "#57b5ff"};
+        final int hash = Math.abs(Objects.requireNonNullElse(seed, "").hashCode());
+        return palette[hash % palette.length];
     }
 
     private String coverMark(final String title) {
         if (title == null || title.isBlank()) {
-            return "云";
+            return "乐";
         }
-        return title.substring(0, 1);
-    }
-
-    private String sanitizeFileName(final String value) {
-        final String sanitized = value.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
-        return sanitized.isBlank() ? "legacy-song" : sanitized;
+        return title.substring(0, 1).toUpperCase(Locale.ROOT);
     }
 
     private String encode(final String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    /**
-     * Download result returned to the JavaFX shell.
-     *
-     * @param success    whether the download succeeded
-     * @param message    user-facing message
-     * @param targetPath saved file path
-     */
-    public record DownloadResult(boolean success, String message, Path targetPath) {
-
-        public static DownloadResult failed(final String message) {
-            return new DownloadResult(false, message, null);
+    private static String resolveServerBaseUrl() {
+        final String propertyValue = System.getProperty(SERVER_BASE_URL_PROPERTY);
+        if (propertyValue != null && !propertyValue.isBlank()) {
+            return propertyValue;
         }
+        final String environmentValue = System.getenv(SERVER_BASE_URL_ENV);
+        if (environmentValue != null && !environmentValue.isBlank()) {
+            return environmentValue;
+        }
+        return DEFAULT_SERVER_BASE_URL;
+    }
+
+    private String normalizeBaseUrl(final String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return DEFAULT_SERVER_BASE_URL;
+        }
+        return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
 }
-

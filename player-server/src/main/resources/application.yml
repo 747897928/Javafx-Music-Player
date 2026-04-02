@@ -4,6 +4,10 @@ spring:
   datasource:
     url: jdbc:sqlite:${player.storage.root}/${player.storage.database-file-name}
     driver-class-name: org.sqlite.JDBC
+  servlet:
+    multipart:
+      max-file-size: 256MB
+      max-request-size: 512MB
 
 server:
   port: 18080
@@ -13,6 +17,10 @@ management:
     web:
       exposure:
         include: health,info
+
+logging:
+  level:
+    org.jaudiotagger: error
 
 mybatis-plus:
   global-config:
@@ -24,7 +32,7 @@ player:
   storage:
     root: ./runtime
     database-file-name: musicbox.db
-    music-directory: library/music
-    lyrics-directory: library/lyrics
-    covers-directory: library/covers
-    cache-directory: cache
+    music-directory: online/music
+    lyrics-directory: online/lyrics
+    covers-directory: online/covers
+    cache-directory: online/cache

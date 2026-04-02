@@ -59,8 +59,12 @@ public final class FxSampleData {
             );
         }
 
-        public boolean isLegacyOnlinePlaylist() {
-            return "legacy-online".equals(this.sourceType);
+        public boolean isBackendCompatPlaylist() {
+            return "backend-compat".equals(this.sourceType) || "legacy-online".equals(this.sourceType);
+        }
+
+        public boolean isBackendCompatSearchPlaylist() {
+            return "backend-compat-search".equals(this.sourceType) || "legacy-online-search".equals(this.sourceType);
         }
     }
 
