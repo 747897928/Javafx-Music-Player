@@ -61,15 +61,15 @@ public final class BackendCompatMusicService {
         for (final JsonNode itemNode : rootNode.path("result")) {
             final String playlistId = itemNode.path("id").asText("");
             final String title = textOr(itemNode, "name", "在线曲库");
-            final String copywriter = textOr(itemNode, "copywriter", "由 Spring Boot 4 在线模块提供。");
+            final String copywriter = textOr(itemNode, "copywriter", "在线推荐内容");
             final String imageUrl = textOr(itemNode, "picUrl", "");
             if (playlistId.isBlank() || title.isBlank()) {
                 continue;
             }
             result.add(new FxSampleData.PlaylistDetail(
                 title,
-                "在线 / Spring Boot 4",
-                copywriter.isBlank() ? "由 Spring Boot 4 在线模块提供。" : copywriter,
+                "在线 / 推荐",
+                copywriter.isBlank() ? "在线推荐内容" : copywriter,
                 colorFromSeed(title),
                 coverMark(title),
                 List.of(),
@@ -96,7 +96,7 @@ public final class BackendCompatMusicService {
         final List<SongSummary> songs = mapSongs(resultNode.path("tracks"));
         return new FxSampleData.PlaylistDetail(
             title,
-            tags.isBlank() ? "在线 / 后端" : tags,
+            tags.isBlank() ? "在线 / 推荐" : tags,
             description.isBlank() ? "该歌单暂无详细介绍。" : description,
             colorFromSeed(title),
             coverMark(title),
@@ -119,7 +119,7 @@ public final class BackendCompatMusicService {
         return new FxSampleData.PlaylistDetail(
             keyword,
             "在线搜索结果",
-            songs.isEmpty() ? "未搜索到匹配歌曲。" : "由 Spring Boot 4 在线模块返回的搜索结果。",
+            songs.isEmpty() ? "未搜索到匹配歌曲。" : "为你整理的在线搜索结果。",
             colorFromSeed(keyword),
             coverMark(keyword),
             songs,
@@ -333,15 +333,15 @@ public final class BackendCompatMusicService {
             new LyricLine(Duration.ZERO, title),
             new LyricLine(Duration.ofSeconds(8), artist.isBlank() ? "未知歌手" : artist),
             new LyricLine(Duration.ofSeconds(16), album.isBlank() ? "在线曲库" : album),
-            new LyricLine(Duration.ofSeconds(24), "当前歌词由 Spring Boot 4 在线模块提供。")
+            new LyricLine(Duration.ofSeconds(24), "当前歌词由在线音乐服务提供。")
         );
     }
 
     private FxSampleData.PlaylistDetail emptyCompatPlaylist(final String title, final String playlistId) {
         return new FxSampleData.PlaylistDetail(
             title,
-            "后端接管中",
-            "当前未能从 Spring Boot 4 在线模块加载数据。",
+            "在线服务",
+            "当前未能加载在线数据。",
             colorFromSeed(title),
             coverMark(title),
             List.of(),

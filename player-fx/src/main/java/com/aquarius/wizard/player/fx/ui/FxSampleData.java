@@ -66,6 +66,10 @@ public final class FxSampleData {
         public boolean isBackendCompatSearchPlaylist() {
             return "backend-compat-search".equals(this.sourceType) || "legacy-online-search".equals(this.sourceType);
         }
+
+        public boolean isSamplePlaylist() {
+            return "sample".equals(this.sourceType);
+        }
     }
 
     public static List<PlaylistSummary> playlists() {
@@ -79,7 +83,7 @@ public final class FxSampleData {
             playlist(
                 "深夜编码室",
                 "电子 / 专注 / 女声",
-                "对应旧版的“发现音乐”歌单卡片，先把列表和切页流程迁进新 UI。",
+                "适合深夜独处时循环播放的一组安静电子与轻声人声。",
                 "#4d8fff",
                 "夜",
                 List.of(
@@ -93,7 +97,7 @@ public final class FxSampleData {
             playlist(
                 "玻璃城市",
                 "流行 / 通勤 / 氛围",
-                "更接近旧版随机推荐歌单的卡片区效果，强调封面、标题和点击跳转。",
+                "把通勤路上的城市灯光、耳机低频和轻微雨声都收进一张歌单里。",
                 "#ff8d7a",
                 "城",
                 List.of(
@@ -107,7 +111,7 @@ public final class FxSampleData {
             playlist(
                 "唱片星期天",
                 "黑胶 / Lo-Fi / 轻复古",
-                "给抽屉页和唱片视觉留出风格上的连续性，不让主界面和详情页断层。",
+                "偏复古的黑胶氛围，适合周末午后把节奏放慢一点。",
                 "#8d78ff",
                 "盘",
                 List.of(
@@ -121,7 +125,7 @@ public final class FxSampleData {
             playlist(
                 "蓝色动线",
                 "女声 / 电子 / 明亮",
-                "承接旧版主界面的蓝色主基调，保持推荐卡片区的辨识度。",
+                "明亮、轻盈又不吵闹，适合白天工作时当作背景音乐。",
                 "#2dc8aa",
                 "蓝",
                 List.of(
@@ -135,7 +139,7 @@ public final class FxSampleData {
             playlist(
                 "工作台回放",
                 "器乐 / 轻节奏 / 专注",
-                "对应旧版切歌、双击表格播放等工作流，先把歌单列表页架起来。",
+                "更偏器乐和轻节奏的一组曲目，适合专注时连续播放。",
                 "#ffc95c",
                 "工",
                 List.of(
@@ -149,7 +153,7 @@ public final class FxSampleData {
             playlist(
                 "粉色余温",
                 "抒情 / 氛围 / 夜色",
-                "用于补足旧版推荐区的色彩变化，让主界面不至于一片同色。",
+                "偏抒情和夜色感的歌单，适合在安静的时候慢慢听。",
                 "#ff6d98",
                 "粉",
                 List.of(
@@ -163,7 +167,7 @@ public final class FxSampleData {
             playlist(
                 "午后磁带",
                 "复古 / 午后 / 轻松",
-                "补齐旧版发现区“换一组”的轮播语义，让推荐歌单不再只有一屏静态样例。",
+                "带一点复古颗粒感和午后温度，听起来松弛又柔和。",
                 "#ffb86c",
                 "午",
                 List.of(
@@ -177,7 +181,7 @@ public final class FxSampleData {
             playlist(
                 "霓虹通道",
                 "夜跑 / 合成器 / 城市",
-                "承接旧版推荐区里偏赛博感和夜色感的封面气质，方便测试卡片刷新和切页。",
+                "为夜跑和城市霓虹准备的节奏型歌单，适合想提一点速度的时候。",
                 "#49d2ff",
                 "霓",
                 List.of(
@@ -191,7 +195,7 @@ public final class FxSampleData {
             playlist(
                 "夜色写字楼",
                 "钢琴 / 都市 / 叙事",
-                "补一组更偏旧版“封面下短文案”的歌单，让发现页在淡色主界面里层次更完整。",
+                "钢琴与都市叙事感更重的一组歌，适合下班后慢慢切换状态。",
                 "#7d8dff",
                 "楼",
                 List.of(
@@ -205,7 +209,7 @@ public final class FxSampleData {
             playlist(
                 "雨幕胶片",
                 "电影感 / 女声 / 阴天",
-                "用于补足旧版封面图更强的氛围感，方便后续把真实封面迁进来时做对照。",
+                "电影感更强的一张歌单，适合雨天、阴天和偏安静的夜晚。",
                 "#5e8cff",
                 "雨",
                 List.of(
@@ -219,7 +223,7 @@ public final class FxSampleData {
             playlist(
                 "海岸复写",
                 "器乐 / 清晨 / 放空",
-                "继续扩大发现区样本量，确保刷新、搜索、点卡片进歌单这些链路都能连续验证。",
+                "清晨海风和器乐线条感更明显，适合放空或者慢慢醒神。",
                 "#4dc7c2",
                 "海",
                 List.of(
@@ -237,7 +241,7 @@ public final class FxSampleData {
         return playlist(
             "本地音乐",
             "LocalMusic / 相对路径",
-            "对应旧版左侧“本地音乐”入口，后续会先接旧扫描逻辑，再切到 Spring Boot 4。",
+            "扫描并展示当前设备上的本地音乐与歌词文件。",
             "#5a8dff",
             "本",
             List.of(
@@ -254,7 +258,7 @@ public final class FxSampleData {
         return playlist(
             "下载队列",
             "Legacy / 迁移占位",
-            "对应旧版“下载当前音乐”入口。第一阶段先迁入口和交互，后续再用后端接管。",
+            "用于查看最近保存到本地音乐目录的歌曲和相关资源。",
             "#ff9d56",
             "下",
             List.of(
@@ -269,7 +273,7 @@ public final class FxSampleData {
         return playlist(
             "本地音乐文件夹",
             "Workspace / runtime / LocalMusic",
-            "对应旧版“本地音乐文件夹”入口，当前先展示相对路径目录语义和迁移承接点。",
+            "展示当前应用常用的本地存储位置与音乐资源目录。",
             "#57b5ff",
             "夹",
             List.of(

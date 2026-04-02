@@ -4,7 +4,6 @@ import com.aquarius.wizard.player.model.SongSummary;
 import com.aquarius.wizard.player.fx.local.LegacyLocalLibraryService;
 import com.aquarius.wizard.player.fx.playback.AudioPlaybackService;
 import com.aquarius.wizard.player.fx.remote.BackendCompatMusicService;
-import com.aquarius.wizard.player.fx.remote.BackendOnlineLibraryService;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ReadOnlyDoubleProperty;
@@ -88,13 +87,11 @@ public final class PlayerShellView {
     private final AudioPlaybackService playbackService = new AudioPlaybackService();
     private final LegacyLocalLibraryService localLibraryService = new LegacyLocalLibraryService();
     private final BackendCompatMusicService backendCompatMusicService = new BackendCompatMusicService();
-    private final BackendOnlineLibraryService backendOnlineLibraryService = new BackendOnlineLibraryService();
     private final SystemTrayBridge systemTrayBridge = new SystemTrayBridge("WizardMusicBox");
     private final ToastNotifier toastNotifier;
     private final MiniPlayerStage miniPlayerStage;
     private final DesktopLyricStage desktopLyricStage;
     private final ArtworkImageLoader artworkImageLoader = new ArtworkImageLoader();
-    private final Path backendOnlineLibraryRoot;
 
     private final VBox sidebar = new VBox(18.0);
     private final TextField searchField = new TextField();
@@ -169,14 +166,10 @@ public final class PlayerShellView {
 
     public PlayerShellView(final Stage stage) {
         this.stage = stage;
-        this.backendOnlineLibraryRoot = this.localLibraryService.localLibraryRoot()
-            .getParent()
-            .resolve(Path.of("runtime", "online"))
-            .normalize();
         this.toastNotifier = new ToastNotifier(stage);
         this.miniPlayerStage = new MiniPlayerStage(stage);
         this.desktopLyricStage = new DesktopLyricStage(stage);
-        this.activePlaylist = this.discoverPlaylists.get(0);
+        this.activePlaylist = buildBackendOnlinePlaceholderPlaylist();
         this.currentSong = this.initialSong;
         this.drawer.setDirection(DrawerPane.DrawerDirection.BOTTOM);
         this.drawer.setOnOpened(() -> this.nowPlayingDrawerView.setTickerEnabled(false));
@@ -797,14 +790,15 @@ public final class PlayerShellView {
     }
 
     private void openActivePlaylist() {
-        if (this.activePlaylist == null) {
+        final FxSampleData.PlaylistDetail targetPlaylist = resolvePlaylistPageTarget();
+        if (targetPlaylist == null) {
             return;
         }
-        if (this.activePlaylist.isBackendCompatPlaylist() && (this.activePlaylist.songs() == null || this.activePlaylist.songs().isEmpty())) {
-            openDiscoverPlaylist(this.activePlaylist);
+        if (targetPlaylist.isBackendCompatPlaylist() && (targetPlaylist.songs() == null || targetPlaylist.songs().isEmpty())) {
+            openDiscoverPlaylist(targetPlaylist);
             return;
         }
-        showPlaylist(this.activePlaylist, true);
+        showPlaylist(targetPlaylist, true);
     }
 
     private void showPlaylist(final FxSampleData.PlaylistDetail detail, final boolean highlightPlaylistNav) {
@@ -875,7 +869,7 @@ public final class PlayerShellView {
         if (this.discoverRefreshButton != null) {
             this.discoverRefreshButton.setDisable(true);
         }
-        this.discoverSubtitleLabel.setText("正在从 Spring Boot 4 在线模块加载推荐歌单...");
+        this.discoverSubtitleLabel.setText("正在加载在线推荐内容...");
         CompletableFuture
             .supplyAsync(this.backendCompatMusicService::loadFeaturedPlaylists)
             .thenAccept(playlistDetails -> Platform.runLater(() -> {
@@ -889,6 +883,9 @@ public final class PlayerShellView {
                     this.discoverPlaylists.addAll(resolvedPlaylists);
                     this.discoverRotationOffset = 0;
                     reconcileActivePlaylistAfterDiscoverRefresh(resolvedPlaylists);
+                    if (this.playlistPage.isVisible() && !isLocalPlaylistActive() && !isLegacySearchPlaylistActive() && this.activePlaylist != null) {
+                        showPlaylist(this.activePlaylist, this.playlistNavButton);
+                    }
                     restoreDiscoverSubtitle();
                     rebuildDiscoverCards();
                     return;
@@ -912,7 +909,7 @@ public final class PlayerShellView {
     }
 
     private void searchBackendSongs(final String query) {
-        this.discoverSubtitleLabel.setText("正在从 Spring Boot 4 在线模块搜索歌曲...");
+        this.discoverSubtitleLabel.setText("正在搜索在线歌曲...");
         if (this.discoverRefreshButton != null) {
             this.discoverRefreshButton.setDisable(true);
         }
@@ -929,7 +926,7 @@ public final class PlayerShellView {
                     if (this.discoverRefreshButton != null) {
                         this.discoverRefreshButton.setDisable(false);
                     }
-                    showWarning("后端搜索失败", "当前未能从 Spring Boot 4 在线模块加载搜索结果。");
+                    showWarning("搜索失败", "当前未能加载在线搜索结果。");
                 });
                 return null;
             });
@@ -958,7 +955,7 @@ public final class PlayerShellView {
                         if (this.discoverRefreshButton != null) {
                             this.discoverRefreshButton.setDisable(false);
                         }
-                        showWarning("歌单加载失败", "Spring Boot 4 在线歌单详情加载失败。");
+                        showWarning("歌单加载失败", "当前未能加载在线歌单详情。");
                     });
                     return null;
                 });
@@ -1000,7 +997,7 @@ public final class PlayerShellView {
 
     private void restoreDiscoverSubtitle() {
         if (this.discoverPlaylists.stream().anyMatch(FxSampleData.PlaylistDetail::isBackendCompatPlaylist)) {
-            this.discoverSubtitleLabel.setText("Spring Boot 4 在线推荐歌单已接回，点击卡片可继续加载歌单详情。");
+            this.discoverSubtitleLabel.setText("当前发现页优先展示在线歌单；当在线服务不可用时，会自动切回本地样例。");
             return;
         }
         this.discoverSubtitleLabel.setText("旧版首页先迁成真正可点击的工作区，不再停留在展示型 Hero 卡片。");
@@ -1482,56 +1479,6 @@ public final class PlayerShellView {
             });
     }
 
-    private void importBackendOnlineFiles() {
-        final FileChooser fileChooser = new FileChooser();
-        configureMusicImportChooser(fileChooser, "导入在线音乐与歌词到后端");
-        final List<java.io.File> files = fileChooser.showOpenMultipleDialog(this.stage);
-        if (files == null || files.isEmpty()) {
-            return;
-        }
-        importBackendOnlineFiles(files.stream().map(java.io.File::toPath).toList());
-    }
-
-    private void importBackendOnlineFiles(final List<Path> files) {
-        if (files == null || files.isEmpty()) {
-            return;
-        }
-        final String playlistId = resolveManagedBackendPlaylistId();
-        final ToastNotifier.LoadingHandle loadingHandle = this.toastNotifier.loading(
-            "长时间任务运行中，请耐心等待！",
-            "开始上传音乐和 lrc 文件到 Spring Boot 4 在线模块。"
-        );
-        CompletableFuture
-            .supplyAsync(() -> new BackendOnlineImportView(
-                this.backendOnlineLibraryService.importFiles(files),
-                this.backendCompatMusicService.loadPlaylist(playlistId)
-            ))
-            .thenAccept(result -> Platform.runLater(() -> {
-                loadingHandle.close();
-                refreshRemoteDiscoverPlaylists(false);
-                showPlaylist(result.playlistDetail(), this.playlistNavButton);
-                if (result.importResult().importedCount() > 0) {
-                    this.toastNotifier.success(
-                        "在线导入完成",
-                        result.importResult().importedAudioCount() + " 个音频，"
-                            + result.importResult().importedLyricCount() + " 个歌词。"
-                    );
-                    return;
-                }
-                this.toastNotifier.warn(
-                    "未导入任何在线资源",
-                    "后端跳过 " + result.importResult().ignoredFiles().size() + " 个文件，请检查文件格式或重复文件。"
-                );
-            }))
-            .exceptionally(throwable -> {
-                Platform.runLater(() -> {
-                    loadingHandle.close();
-                    this.toastNotifier.fail("在线导入失败", "未能把文件上传到 Spring Boot 4 在线模块。");
-                });
-                return null;
-            });
-    }
-
     private void downloadCurrentSong() {
         if (this.currentSong == null) {
             showWarning("无法下载", "当前没有选中的歌曲。");
@@ -1548,7 +1495,7 @@ public final class PlayerShellView {
         final SongSummary songToDownload = this.currentSong;
         final ToastNotifier.LoadingHandle loadingHandle = this.toastNotifier.loading(
             "长时间任务运行中，请耐心等待！",
-            "正在通过 Spring Boot 4 后端保存音频、歌词和标签到 ./LocalMusic。"
+            "正在保存音频、歌词和封面信息到本地音乐目录。"
         );
         CompletableFuture
             .supplyAsync(() -> this.backendCompatMusicService.downloadSongToLocalLibrary(
@@ -1588,32 +1535,6 @@ public final class PlayerShellView {
         }
     }
 
-    private void refreshBackendOnlineLibrary() {
-        final String playlistId = resolveManagedBackendPlaylistId();
-        final ToastNotifier.LoadingHandle loadingHandle = this.toastNotifier.loading(
-            "长时间任务运行中，请耐心等待！",
-            "正在刷新 Spring Boot 4 在线曲库和 SQLite 索引。"
-        );
-        CompletableFuture
-            .supplyAsync(() -> new BackendOnlineRefreshView(
-                this.backendOnlineLibraryService.refreshCatalog(),
-                this.backendCompatMusicService.loadPlaylist(playlistId)
-            ))
-            .thenAccept(result -> Platform.runLater(() -> {
-                loadingHandle.close();
-                refreshRemoteDiscoverPlaylists(false);
-                showPlaylist(result.playlistDetail(), this.playlistNavButton);
-                showInformation("在线曲库已刷新", "当前后端在线曲库共有 " + result.refreshResult().trackCount() + " 首歌。");
-            }))
-            .exceptionally(throwable -> {
-                Platform.runLater(() -> {
-                    loadingHandle.close();
-                    this.toastNotifier.fail("在线刷新失败", "未能刷新 Spring Boot 4 在线曲库。");
-                });
-                return null;
-            });
-    }
-
     private void refreshLocalLibraryView() {
         final FxSampleData.PlaylistDetail localLibrary = loadLocalLibrary();
         if (isLocalPlaylistActive()) {
@@ -1630,6 +1551,9 @@ public final class PlayerShellView {
             return;
         }
         if (isLocalPlaylistActive()) {
+            setPlaylistActionVisibility(this.playlistImportButton, true);
+            setPlaylistActionVisibility(this.playlistRefreshButton, true);
+            setPlaylistActionVisibility(this.playlistOpenFolderButton, true);
             this.playlistImportButton.setText("导入音乐");
             this.playlistImportButton.setOnAction(event -> importLocalFiles());
             this.playlistRefreshButton.setText("刷新本地");
@@ -1638,26 +1562,35 @@ public final class PlayerShellView {
             this.playlistOpenFolderButton.setOnAction(event -> openLocalMusicDirectory());
             return;
         }
-        this.playlistImportButton.setText("导入在线");
-        this.playlistImportButton.setOnAction(event -> importBackendOnlineFiles());
-        this.playlistRefreshButton.setText("刷新在线");
-        this.playlistRefreshButton.setOnAction(event -> refreshBackendOnlineLibrary());
-        this.playlistOpenFolderButton.setText("后端目录");
-        this.playlistOpenFolderButton.setOnAction(event -> openBackendOnlineDirectory());
+        setPlaylistActionVisibility(this.playlistImportButton, false);
+        setPlaylistActionVisibility(this.playlistOpenFolderButton, false);
+        setPlaylistActionVisibility(this.playlistRefreshButton, this.activePlaylist != null
+            && (this.activePlaylist.isBackendCompatPlaylist() || this.activePlaylist.isBackendCompatSearchPlaylist()));
+        if (isLegacySearchPlaylistActive()) {
+            this.playlistRefreshButton.setText("重新搜索");
+            this.playlistRefreshButton.setOnAction(event -> reloadActiveSearchPlaylist());
+            return;
+        }
+        if (this.activePlaylist != null && this.activePlaylist.isBackendCompatPlaylist()) {
+            this.playlistRefreshButton.setText("重新加载");
+            this.playlistRefreshButton.setOnAction(event -> reloadActiveOnlinePlaylist());
+            return;
+        }
+        setPlaylistActionVisibility(this.playlistRefreshButton, false);
     }
 
     private void reconcileActivePlaylistAfterDiscoverRefresh(final List<FxSampleData.PlaylistDetail> refreshedPlaylists) {
         if (refreshedPlaylists == null || refreshedPlaylists.isEmpty()) {
             return;
         }
-        if (this.playlistPage.isVisible()
-            && this.activePlaylist != null
-            && this.activePlaylist.songs() != null
-            && !this.activePlaylist.songs().isEmpty()) {
+        if (this.activePlaylist != null
+            && (this.activePlaylist.isBackendCompatSearchPlaylist() || isLocalPlaylistActive())) {
             return;
         }
+        final FxSampleData.PlaylistDetail preferredOnlinePlaylist = resolvePreferredOnlinePlaylist(refreshedPlaylists)
+            .orElse(refreshedPlaylists.get(0));
         if (this.activePlaylist == null) {
-            this.activePlaylist = refreshedPlaylists.get(0);
+            this.activePlaylist = preferredOnlinePlaylist;
             return;
         }
         final Optional<FxSampleData.PlaylistDetail> matchedPlaylist = refreshedPlaylists.stream()
@@ -1667,8 +1600,8 @@ public final class PlayerShellView {
             this.activePlaylist = matchedPlaylist.get();
             return;
         }
-        if (this.discoverScrollPane.isVisible()) {
-            this.activePlaylist = refreshedPlaylists.get(0);
+        if (this.activePlaylist.isSamplePlaylist() || this.activePlaylist.isBackendCompatPlaylist()) {
+            this.activePlaylist = preferredOnlinePlaylist;
         }
     }
 
@@ -1714,22 +1647,115 @@ public final class PlayerShellView {
         openPathInFileManager(this.localLibraryService.localLibraryRoot(), false);
     }
 
-    private void openBackendOnlineDirectory() {
-        try {
-            Files.createDirectories(this.backendOnlineLibraryRoot);
-        } catch (IOException ignored) {
+    private void reloadActiveOnlinePlaylist() {
+        if (this.activePlaylist == null || !this.activePlaylist.isBackendCompatPlaylist()) {
+            return;
         }
-        openPathInFileManager(this.backendOnlineLibraryRoot, false);
+        final String playlistId = this.activePlaylist.sourceId();
+        if (playlistId == null || playlistId.isBlank()) {
+            return;
+        }
+        final ToastNotifier.LoadingHandle loadingHandle = this.toastNotifier.loading(
+            "长时间任务运行中，请耐心等待！",
+            "正在更新在线歌单内容。"
+        );
+        CompletableFuture
+            .supplyAsync(() -> this.backendCompatMusicService.loadPlaylist(playlistId))
+            .thenAccept(playlistDetail -> Platform.runLater(() -> {
+                loadingHandle.close();
+                replacePlaylistByIdentity(playlistDetail);
+                showPlaylist(playlistDetail, this.playlistNavButton);
+                this.toastNotifier.success("列表已更新", "已重新加载当前在线歌单。");
+            }))
+            .exceptionally(throwable -> {
+                Platform.runLater(() -> {
+                    loadingHandle.close();
+                    this.toastNotifier.fail("加载失败", "未能重新加载当前在线歌单。");
+                });
+                return null;
+            });
     }
 
-    private String resolveManagedBackendPlaylistId() {
-        if (this.activePlaylist != null
-            && this.activePlaylist.isBackendCompatPlaylist()
-            && this.activePlaylist.sourceId() != null
-            && !this.activePlaylist.sourceId().isBlank()) {
-            return this.activePlaylist.sourceId();
+    private void reloadActiveSearchPlaylist() {
+        if (!isLegacySearchPlaylistActive() || this.activePlaylist == null) {
+            return;
         }
-        return "online-library";
+        final String query = this.activePlaylist.sourceId() != null && !this.activePlaylist.sourceId().isBlank()
+            ? this.activePlaylist.sourceId()
+            : this.activePlaylist.title();
+        searchBackendSongs(query);
+    }
+
+    private void setPlaylistActionVisibility(final Button button, final boolean visible) {
+        if (button == null) {
+            return;
+        }
+        button.setVisible(visible);
+        button.setManaged(visible);
+    }
+
+    private void replacePlaylistByIdentity(final FxSampleData.PlaylistDetail updatedPlaylist) {
+        if (updatedPlaylist == null) {
+            return;
+        }
+        final int index = findPlaylistIndex(updatedPlaylist);
+        if (index >= 0) {
+            this.discoverPlaylists.set(index, updatedPlaylist);
+            rebuildDiscoverCards();
+        }
+    }
+
+    private int findPlaylistIndex(final FxSampleData.PlaylistDetail targetPlaylist) {
+        if (targetPlaylist == null) {
+            return -1;
+        }
+        for (int index = 0; index < this.discoverPlaylists.size(); index++) {
+            if (samePlaylistIdentity(this.discoverPlaylists.get(index), targetPlaylist)) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private FxSampleData.PlaylistDetail resolvePlaylistPageTarget() {
+        if (this.activePlaylist == null) {
+            return resolvePreferredOnlinePlaylist(this.discoverPlaylists).orElse(null);
+        }
+        if (this.activePlaylist.isBackendCompatPlaylist() || this.activePlaylist.isBackendCompatSearchPlaylist()) {
+            return this.activePlaylist;
+        }
+        return resolvePreferredOnlinePlaylist(this.discoverPlaylists).orElse(this.activePlaylist);
+    }
+
+    private Optional<FxSampleData.PlaylistDetail> resolvePreferredOnlinePlaylist(final List<FxSampleData.PlaylistDetail> playlists) {
+        if (playlists == null || playlists.isEmpty()) {
+            return Optional.empty();
+        }
+        return playlists.stream()
+            .filter(FxSampleData.PlaylistDetail::isBackendCompatPlaylist)
+            .sorted((left, right) -> {
+                final boolean leftPrimary = "online-library".equals(left.sourceId());
+                final boolean rightPrimary = "online-library".equals(right.sourceId());
+                if (leftPrimary == rightPrimary) {
+                    return 0;
+                }
+                return leftPrimary ? -1 : 1;
+            })
+            .findFirst();
+    }
+
+    private FxSampleData.PlaylistDetail buildBackendOnlinePlaceholderPlaylist() {
+        return new FxSampleData.PlaylistDetail(
+            "在线曲库",
+            "在线 / 推荐",
+            "正在连接在线音乐服务，请稍候。",
+            "#4d8fff",
+            "在",
+            List.of(),
+            "backend-compat",
+            "online-library",
+            ""
+        );
     }
 
     private void openSongInFileManager(final SongSummary song) {
@@ -2253,24 +2279,10 @@ public final class PlayerShellView {
     }
 
     private List<FxSampleData.PlaylistDetail> ensureMinimumDiscoverPlaylists(final List<FxSampleData.PlaylistDetail> onlinePlaylists) {
-        final int minimumTarget = Math.max(8, resolveDiscoverBatchSize());
-        if (onlinePlaylists.size() >= minimumTarget) {
-            return onlinePlaylists;
+        if (onlinePlaylists == null || onlinePlaylists.isEmpty()) {
+            return new ArrayList<>(FxSampleData.playlistDetails());
         }
-        final List<FxSampleData.PlaylistDetail> mergedPlaylists = new ArrayList<>(onlinePlaylists);
-        for (final FxSampleData.PlaylistDetail fallbackDetail : FxSampleData.playlistDetails()) {
-            final boolean alreadyPresent = mergedPlaylists.stream()
-                .anyMatch(detail -> Objects.equals(detail.sourceId(), fallbackDetail.sourceId())
-                    || Objects.equals(detail.title(), fallbackDetail.title()));
-            if (alreadyPresent) {
-                continue;
-            }
-            mergedPlaylists.add(fallbackDetail);
-            if (mergedPlaylists.size() >= minimumTarget) {
-                break;
-            }
-        }
-        return mergedPlaylists;
+        return new ArrayList<>(onlinePlaylists);
     }
 
     private void bindDiscoverCardWidth(final StackPane discoverCard) {
@@ -2428,18 +2440,6 @@ public final class PlayerShellView {
 
     private boolean isBlank(final String value) {
         return value == null || value.isBlank();
-    }
-
-    private record BackendOnlineImportView(
-        BackendOnlineLibraryService.ImportResult importResult,
-        FxSampleData.PlaylistDetail playlistDetail
-    ) {
-    }
-
-    private record BackendOnlineRefreshView(
-        BackendOnlineLibraryService.RefreshResult refreshResult,
-        FxSampleData.PlaylistDetail playlistDetail
-    ) {
     }
 
     private enum PlaybackMode {

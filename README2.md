@@ -83,6 +83,34 @@ mvn -pl player-fx javafx:run
 server.base-url=http://127.0.0.1:18080
 ```
 
+## 打包与部署
+
+服务端和桌面端是两套独立产物，部署时应分开处理：
+
+- 服务端部署到服务器或自管主机
+- 桌面端打包后分发给最终用户
+
+仓库已提供打包脚本：
+
+- 服务端打包
+  - `scripts/package-server.ps1`
+  - `scripts/package-server.sh`
+- 桌面端打包
+  - `scripts/package-client.ps1`
+  - `scripts/package-client.sh`
+
+示例：
+
+```powershell
+./scripts/package-server.ps1
+./scripts/package-client.ps1 -ServerBaseUrl "http://your-server-host:18080"
+```
+
+打包输出默认位于：
+
+- `./dist/server/WizardMusicServer`
+- `./dist/client/WizardMusicBox`
+
 ## 在线模块说明
 
 当前在线模块的默认实现不是第三方抓取，而是后端管理的本地在线曲库：
@@ -108,8 +136,4 @@ server.base-url=http://127.0.0.1:18080
 - 第三方直连逻辑已移除
 - 默认运行形态已落到 `Spring Boot 4 + SQLite`
 
-## 文档
-
-- 长期维护约束：`docs/maintenance-requirements.md`
-- 第二阶段归档：`docs/archive/requirements-phase2.md`
-- 第一阶段历史归档：`docs/archive/maintenance-requirements-phase1.md`
+内部维护与阶段性调整文档默认仅本地保存，不随开源仓库公开发布。
