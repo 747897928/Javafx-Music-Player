@@ -81,6 +81,10 @@ import javax.imageio.ImageIO;
 public final class PlayerShellView {
 
     private static final long PLAYBACK_WARNING_SUPPRESS_NANOS = java.time.Duration.ofMillis(1_250L).toNanos();
+    private static final double CURRENT_ARTWORK_IMAGE_SIZE = 220.0;
+    private static final double PLAYLIST_ARTWORK_IMAGE_SIZE = 160.0;
+    private static final double DISCOVER_CARD_ARTWORK_WIDTH = 240.0;
+    private static final double DISCOVER_CARD_ARTWORK_HEIGHT = 160.0;
 
     private final Stage stage;
     private final StackPane root = new StackPane();
@@ -89,7 +93,8 @@ public final class PlayerShellView {
     private final List<FxSampleData.PlaylistDetail> discoverPlaylists = new ArrayList<>(FxSampleData.playlistDetails());
     private final ObservableList<SongSummary> songRows = FXCollections.observableArrayList();
     private final FilteredList<SongSummary> filteredSongs = new FilteredList<>(this.songRows);
-    private final NowPlayingDrawerView nowPlayingDrawerView = new NowPlayingDrawerView(this.initialSong);
+    private final ArtworkImageLoader artworkImageLoader = new ArtworkImageLoader();
+    private final NowPlayingDrawerView nowPlayingDrawerView;
     private final AudioPlaybackService playbackService = new AudioPlaybackService();
     private final LegacyLocalLibraryService localLibraryService = new LegacyLocalLibraryService();
     private final BackendCompatMusicService backendCompatMusicService = new BackendCompatMusicService();
@@ -97,7 +102,6 @@ public final class PlayerShellView {
     private final ToastNotifier toastNotifier;
     private final MiniPlayerStage miniPlayerStage;
     private final DesktopLyricStage desktopLyricStage;
-    private final ArtworkImageLoader artworkImageLoader = new ArtworkImageLoader();
 
     private final VBox sidebar = new VBox(18.0);
     private final TextField searchField = new TextField();
@@ -148,6 +152,7 @@ public final class PlayerShellView {
     private Button playlistOpenFolderButton;
     private FxSampleData.PlaylistDetail activePlaylist;
     private SongSummary currentSong;
+    private Image currentSongArtwork;
     private int currentSongIndex;
     private int discoverRotationOffset;
     private boolean playbackActive;
@@ -173,7 +178,8 @@ public final class PlayerShellView {
     public PlayerShellView(final Stage stage) {
         this.stage = stage;
         this.toastNotifier = new ToastNotifier(stage);
-        this.miniPlayerStage = new MiniPlayerStage(stage);
+        this.nowPlayingDrawerView = new NowPlayingDrawerView(this.artworkImageLoader, this.initialSong);
+        this.miniPlayerStage = new MiniPlayerStage(stage, this.artworkImageLoader);
         this.desktopLyricStage = new DesktopLyricStage(stage);
         // Start with a lightweight online placeholder so the "歌单" page opens
         // to the online module immediately, even before the backend finishes
@@ -494,7 +500,11 @@ public final class PlayerShellView {
         cover.setMinHeight(130.0);
         cover.setPrefHeight(130.0);
         cover.setMaxHeight(130.0);
-        final Image coverImage = this.artworkImageLoader.loadPlaylistArtwork(detail);
+        final Image coverImage = this.artworkImageLoader.loadPlaylistArtwork(
+            detail,
+            DISCOVER_CARD_ARTWORK_WIDTH,
+            DISCOVER_CARD_ARTWORK_HEIGHT
+        );
         final ImageView coverImageView = new ImageView(coverImage);
         coverImageView.setManaged(false);
         coverImageView.setMouseTransparent(true);
@@ -823,7 +833,11 @@ public final class PlayerShellView {
         this.playlistTagsLabel.setText("标签：" + detail.tags());
         this.playlistDescriptionLabel.setText("介绍：" + detail.description());
         this.playlistCoverMark.setText(detail.coverMark());
-        final Image playlistArtwork = this.artworkImageLoader.loadPlaylistArtwork(detail);
+        final Image playlistArtwork = this.artworkImageLoader.loadPlaylistArtwork(
+            detail,
+            PLAYLIST_ARTWORK_IMAGE_SIZE,
+            PLAYLIST_ARTWORK_IMAGE_SIZE
+        );
         this.playlistCoverImageView.setImage(playlistArtwork);
         this.playlistCoverMark.setVisible(
             playlistArtwork == null || playlistArtwork == this.artworkImageLoader.loadFallbackArtwork()
@@ -1141,8 +1155,15 @@ public final class PlayerShellView {
         this.currentSong = enhancedSong;
         this.currentTrackTitleLabel.setText(enhancedSong.title());
         this.currentTrackArtistLabel.setText(enhancedSong.artist());
-        this.nowPlayingDrawerView.setSong(enhancedSong);
-        this.miniPlayerStage.setSong(enhancedSong);
+        this.currentSongArtwork = this.artworkImageLoader.loadSongArtwork(
+            enhancedSong,
+            CURRENT_ARTWORK_IMAGE_SIZE,
+            CURRENT_ARTWORK_IMAGE_SIZE
+        );
+        this.currentTrackArtworkView.setImage(this.currentSongArtwork);
+        this.currentTrackThumbnailLabel.setVisible(this.currentSongArtwork == null);
+        this.nowPlayingDrawerView.setSong(enhancedSong, this.currentSongArtwork);
+        this.miniPlayerStage.setSong(enhancedSong, this.currentSongArtwork);
         this.desktopLyricStage.setSong(enhancedSong);
         this.systemTrayBridge.updateToolTip(enhancedSong.title());
         final int currentIndexInRows = findSongIndexBySourceId(this.songRows, enhancedSong.sourceId());
@@ -1213,7 +1234,16 @@ public final class PlayerShellView {
     private void applyCurrentSong(final SongSummary song) {
         this.currentTrackTitleLabel.setText(song.title());
         this.currentTrackArtistLabel.setText(song.artist());
-        this.currentTrackArtworkView.setImage(this.artworkImageLoader.loadSongArtwork(song));
+        // Decode the active song artwork once and share it across the compact
+        // player strip, the immersive drawer, and mini mode. This avoids
+        // holding a cache of old covers while still preventing three decodes of
+        // the currently playing image.
+        this.currentSongArtwork = this.artworkImageLoader.loadSongArtwork(
+            song,
+            CURRENT_ARTWORK_IMAGE_SIZE,
+            CURRENT_ARTWORK_IMAGE_SIZE
+        );
+        this.currentTrackArtworkView.setImage(this.currentSongArtwork);
         this.currentTrackThumbnailLabel.setVisible(this.currentTrackArtworkView.getImage() == null);
         this.currentTrackThumbnailLabel.setText(song.title().isBlank() ? "♫" : song.title().substring(0, 1));
         this.currentTrackThumbnailLabel.setStyle("-fx-background-color: linear-gradient(to bottom right, "
@@ -1224,8 +1254,8 @@ public final class PlayerShellView {
         this.progressSeekBar.setDisable(true);
         this.progressSeekBar.setTotalDuration(song.duration());
         this.progressSeekBar.reset();
-        this.nowPlayingDrawerView.setSong(song);
-        this.miniPlayerStage.setSong(song);
+        this.nowPlayingDrawerView.setSong(song, this.currentSongArtwork);
+        this.miniPlayerStage.setSong(song, this.currentSongArtwork);
         this.desktopLyricStage.setSong(song);
         this.desktopLyricStage.updatePlaybackPosition(Duration.ZERO);
         this.systemTrayBridge.updateToolTip(song.title());
@@ -2149,6 +2179,7 @@ public final class PlayerShellView {
         this.nowPlayingDrawerView.dispose();
         this.miniPlayerStage.dispose();
         this.desktopLyricStage.dispose();
+        this.currentSongArtwork = null;
         this.toastNotifier.destroy();
         this.playbackService.dispose();
     }

@@ -34,6 +34,7 @@ import javafx.util.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Immersive now-playing drawer content that keeps the old project feel while
@@ -74,7 +75,7 @@ public final class NowPlayingDrawerView extends StackPane {
     private final ImageView albumArtworkView = new ImageView();
     private final ImageView vinylBaseImageView = new ImageView();
     private final ImageView rodImageView = new ImageView();
-    private final ArtworkImageLoader artworkImageLoader = new ArtworkImageLoader();
+    private final ArtworkImageLoader artworkImageLoader;
 
     private Timeline lyricScrollTimeline;
     private Timeline lyricStateTimeline;
@@ -89,7 +90,8 @@ public final class NowPlayingDrawerView extends StackPane {
     private Runnable onLyricAction = () -> { };
     private Runnable onCloseAction = () -> { };
 
-    public NowPlayingDrawerView(final SongSummary songSummary) {
+    public NowPlayingDrawerView(final ArtworkImageLoader artworkImageLoader, final SongSummary songSummary) {
+        this.artworkImageLoader = Objects.requireNonNull(artworkImageLoader, "artworkImageLoader");
         this.currentSong = songSummary;
         getStyleClass().add("drawer-view");
         getChildren().add(buildLayout());
@@ -101,13 +103,17 @@ public final class NowPlayingDrawerView extends StackPane {
     }
 
     public void setSong(final SongSummary songSummary) {
+        setSong(songSummary, null);
+    }
+
+    public void setSong(final SongSummary songSummary, final Image artworkImage) {
         if (songSummary == null) {
             return;
         }
         this.currentSong = songSummary;
         this.currentTotalDuration = songSummary.duration();
         this.activeLyricIndex = 0;
-        updateSongMeta();
+        updateSongMeta(artworkImage);
         rebuildLyrics();
         restartLyricTicker();
         Platform.runLater(() -> applyActiveLyric(false));
@@ -301,8 +307,11 @@ public final class NowPlayingDrawerView extends StackPane {
         return this.closeDrawerButton;
     }
 
-    private void updateSongMeta() {
-        this.albumArtworkView.setImage(this.artworkImageLoader.loadSongArtwork(this.currentSong));
+    private void updateSongMeta(final Image artworkImage) {
+        final Image resolvedArtwork = artworkImage != null
+            ? artworkImage
+            : this.artworkImageLoader.loadSongArtwork(this.currentSong, 220.0, 220.0);
+        this.albumArtworkView.setImage(resolvedArtwork);
         this.albumTitleLabel.setText(this.currentSong.title());
         this.drawerSongTitleLabel.setText(this.currentSong.title());
         this.drawerSongSubtitleLabel.setText(this.currentSong.artist() + "  •  " + this.currentSong.album());

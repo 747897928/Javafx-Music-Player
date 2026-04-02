@@ -29,6 +29,7 @@ import javafx.stage.StageStyle;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -49,7 +50,7 @@ public final class MiniPlayerStage extends Stage {
     private final Button lyricButton = new Button();
     private final Button unfoldButton = new Button();
     private final ContextMenu playlistMenu = new ContextMenu();
-    private final ArtworkImageLoader artworkImageLoader = new ArtworkImageLoader();
+    private final ArtworkImageLoader artworkImageLoader;
 
     private Runnable onPreviousAction = () -> { };
     private Runnable onPlayPauseAction = () -> { };
@@ -61,8 +62,9 @@ public final class MiniPlayerStage extends Stage {
     private double dragOffsetX;
     private double dragOffsetY;
 
-    public MiniPlayerStage(final Stage owner) {
+    public MiniPlayerStage(final Stage owner, final ArtworkImageLoader artworkImageLoader) {
         this.ownerStage = owner;
+        this.artworkImageLoader = Objects.requireNonNull(artworkImageLoader, "artworkImageLoader");
         initStyle(StageStyle.TRANSPARENT);
         setAlwaysOnTop(true);
 
@@ -86,14 +88,20 @@ public final class MiniPlayerStage extends Stage {
     }
 
     public void setSong(final SongSummary songSummary) {
+        setSong(songSummary, null);
+    }
+
+    public void setSong(final SongSummary songSummary, final Image artwork) {
         if (songSummary == null) {
             return;
         }
         this.titleLabel.setText(songSummary.title());
         this.subtitleLabel.setText(songSummary.artist());
-        final Image artwork = this.artworkImageLoader.loadSongArtwork(songSummary);
-        this.coverImageView.setImage(artwork);
-        this.restoreCoverImageView.setImage(artwork);
+        final Image resolvedArtwork = artwork != null
+            ? artwork
+            : this.artworkImageLoader.loadSongArtwork(songSummary, 96.0, 96.0);
+        this.coverImageView.setImage(resolvedArtwork);
+        this.restoreCoverImageView.setImage(resolvedArtwork);
     }
 
     public void setPlaylistSongs(final List<SongSummary> songs) {
