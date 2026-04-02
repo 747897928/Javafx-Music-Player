@@ -153,6 +153,14 @@ public final class MiniPlayerStage extends Stage {
         requestFocus();
     }
 
+    public void dispose() {
+        this.playlistMenu.hide();
+        this.playlistMenu.getItems().clear();
+        this.playlistSongs = List.of();
+        this.coverImageView.setImage(null);
+        this.restoreCoverImageView.setImage(null);
+    }
+
     private StackPane buildLayout() {
         final StackPane shell = new StackPane();
         shell.getStyleClass().add("mini-player-shell");

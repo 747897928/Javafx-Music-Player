@@ -111,6 +111,13 @@ public final class DesktopLyricStage extends Stage {
         showBelow(anchorStage);
     }
 
+    public void dispose() {
+        hide();
+        this.currentSong = null;
+        this.lastPosition = Duration.ZERO;
+        this.lyricLabel.setText("暂无歌词");
+    }
+
     public void showAtDefaultPosition() {
         sizeToScene();
         final Rectangle2D visualBounds = Screen.getPrimary().getVisualBounds();

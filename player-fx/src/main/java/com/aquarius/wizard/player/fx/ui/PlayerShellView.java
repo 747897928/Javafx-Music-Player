@@ -70,7 +70,13 @@ import java.nio.file.Path;
 import javax.imageio.ImageIO;
 
 /**
- * Desktop shell used during the Phase 2 backend takeover.
+ * Main desktop shell for the JavaFX client.
+ *
+ * <p>This class is still the biggest UI assembly point in the application, so
+ * the comments below focus on the parts that are easy to misunderstand:
+ * switching between local and online modules, picking the right playlist when
+ * backend data arrives, and copying an online track back into the user's local
+ * music library.</p>
  */
 public final class PlayerShellView {
 
@@ -169,6 +175,9 @@ public final class PlayerShellView {
         this.toastNotifier = new ToastNotifier(stage);
         this.miniPlayerStage = new MiniPlayerStage(stage);
         this.desktopLyricStage = new DesktopLyricStage(stage);
+        // Start with a lightweight online placeholder so the "歌单" page opens
+        // to the online module immediately, even before the backend finishes
+        // returning real playlists.
         this.activePlaylist = buildBackendOnlinePlaceholderPlaylist();
         this.currentSong = this.initialSong;
         this.drawer.setDirection(DrawerPane.DrawerDirection.BOTTOM);
@@ -878,6 +887,10 @@ public final class PlayerShellView {
                     this.discoverRefreshButton.setDisable(false);
                 }
                 if (!playlistDetails.isEmpty()) {
+                    // The backend may return only one or two real playlists.
+                    // We still pass the result through the sample-data helper
+                    // so the discover page keeps a stable card layout instead
+                    // of collapsing visually during development or offline use.
                     final List<FxSampleData.PlaylistDetail> resolvedPlaylists = ensureMinimumDiscoverPlaylists(playlistDetails);
                     this.discoverPlaylists.clear();
                     this.discoverPlaylists.addAll(resolvedPlaylists);
@@ -1498,6 +1511,8 @@ public final class PlayerShellView {
             "正在保存音频、歌词和封面信息到本地音乐目录。"
         );
         CompletableFuture
+            // Download work stays off the FX thread because it may involve
+            // network IO, file copies, tag rewriting, and artwork embedding.
             .supplyAsync(() -> this.backendCompatMusicService.downloadSongToLocalLibrary(
                 songToDownload,
                 this.localLibraryService.localMusicDirectory(),
@@ -1585,6 +1600,9 @@ public final class PlayerShellView {
         }
         if (this.activePlaylist != null
             && (this.activePlaylist.isBackendCompatSearchPlaylist() || isLocalPlaylistActive())) {
+            // Respect explicit user context switches. A discover refresh should
+            // not yank the user out of local music or replace an active search
+            // result page with a recommended online playlist.
             return;
         }
         final FxSampleData.PlaylistDetail preferredOnlinePlaylist = resolvePreferredOnlinePlaylist(refreshedPlaylists)
@@ -1601,6 +1619,8 @@ public final class PlayerShellView {
             return;
         }
         if (this.activePlaylist.isSamplePlaylist() || this.activePlaylist.isBackendCompatPlaylist()) {
+            // Once real backend data arrives, sample placeholders should step
+            // aside and let the true online library become the default target.
             this.activePlaylist = preferredOnlinePlaylist;
         }
     }
@@ -1734,6 +1754,9 @@ public final class PlayerShellView {
         return playlists.stream()
             .filter(FxSampleData.PlaylistDetail::isBackendCompatPlaylist)
             .sorted((left, right) -> {
+                // "online-library" is our primary catalog and should win over
+                // derived playlists such as "recent imports" or search results
+                // when the shell needs a single default online entry point.
                 final boolean leftPrimary = "online-library".equals(left.sourceId());
                 final boolean rightPrimary = "online-library".equals(right.sourceId());
                 if (leftPrimary == rightPrimary) {
@@ -1748,6 +1771,9 @@ public final class PlayerShellView {
         return new FxSampleData.PlaylistDetail(
             "在线曲库",
             "在线 / 推荐",
+            // This text is intentionally user-facing and product-oriented. It
+            // should explain what the app is doing without exposing backend
+            // implementation details such as framework names or server folders.
             "正在连接在线音乐服务，请稍候。",
             "#4d8fff",
             "在",
@@ -2112,9 +2138,17 @@ public final class PlayerShellView {
             return;
         }
         this.disposed = true;
+        // Close transient UI surfaces first so they do not keep references to
+        // nodes, images, or animations after the primary shell is shutting
+        // down.
+        this.volumePopup.hide();
+        this.drawer.close();
         this.systemTrayBridge.remove();
         this.miniPlayerStage.hide();
         this.desktopLyricStage.hide();
+        this.nowPlayingDrawerView.dispose();
+        this.miniPlayerStage.dispose();
+        this.desktopLyricStage.dispose();
         this.toastNotifier.destroy();
         this.playbackService.dispose();
     }

@@ -23,6 +23,15 @@ import java.util.logging.Logger;
 /**
  * Centralizes local audio-tag read/write logic so local scans, embedded-artwork
  * loading, and backend-to-local downloads stay on the same metadata behavior.
+ *
+ * <p>Keeping all jaudiotagger interaction in one helper matters for two
+ * reasons:
+ * <ol>
+ *     <li>The UI code should not need to know tag-library quirks.</li>
+ *     <li>Reading and writing metadata must follow the same fallback rules, or
+ *     the local library view and the download flow will drift apart.</li>
+ * </ol>
+ * </p>
  */
 public final class LocalAudioMetadataUtils {
 
@@ -33,6 +42,10 @@ public final class LocalAudioMetadataUtils {
         .build();
 
     static {
+        // jaudiotagger is useful, but its default JUL output is extremely noisy
+        // for a desktop app that scans many files. We silence library-level
+        // logs here and report user-facing failures through return values
+        // instead.
         Logger.getLogger("org.jaudiotagger").setLevel(Level.OFF);
         Logger.getLogger("org.jaudiotagger.audio").setLevel(Level.OFF);
     }
@@ -46,6 +59,8 @@ public final class LocalAudioMetadataUtils {
         final String fallbackArtist,
         final String fallbackAlbum
     ) {
+        // Start with caller-provided defaults so the UI can still display a
+        // sensible row even when the file has no tags or the tag parser fails.
         String title = firstNonBlank(fallbackTitle, "未知歌曲");
         String artist = fallbackArtist == null ? "" : fallbackArtist;
         String album = firstNonBlank(fallbackAlbum, "本地音乐");
@@ -85,6 +100,9 @@ public final class LocalAudioMetadataUtils {
             }
             final Artwork artwork = tag.getFirstArtwork();
             final byte[] binaryData = artwork.getBinaryData();
+            // Some formats expose raw artwork bytes even when BufferedImage
+            // decoding fails, so we keep both forms and let the JavaFX layer
+            // choose the cheapest successful path.
             BufferedImage image = null;
             try {
                 image = artwork.getImage();
@@ -117,6 +135,8 @@ public final class LocalAudioMetadataUtils {
             final AudioFile audioFile = AudioFileIO.read(audioFilePath.toFile());
             final Tag tag = audioFile.getTagOrCreateAndSetDefault();
 
+            // These are the minimum fields the player relies on for display and
+            // for later rescans of the local library.
             tag.setField(FieldKey.TITLE, resolvedTitle);
             if (!resolvedArtist.isBlank()) {
                 tag.setField(FieldKey.ARTIST, resolvedArtist);
@@ -130,6 +150,9 @@ public final class LocalAudioMetadataUtils {
                 try {
                     artworkFile = downloadArtwork(artworkUrl.trim());
                     try {
+                        // Replace any older cover so the file reflects the
+                        // latest downloaded online metadata instead of keeping
+                        // multiple stale artwork frames around.
                         tag.deleteArtworkField();
                     } catch (Exception ignored) {
                     }
@@ -169,6 +192,8 @@ public final class LocalAudioMetadataUtils {
         if (response.body() == null || response.body().length == 0) {
             throw new IOException("封面响应为空。");
         }
+        // We keep the original image bytes in a temp file because jaudiotagger
+        // expects a physical file when embedding artwork into an audio tag.
         final Path tempFile = Files.createTempFile(
             "wizard-artwork-",
             resolveImageExtension(response.headers().firstValue("Content-Type").orElse(""))

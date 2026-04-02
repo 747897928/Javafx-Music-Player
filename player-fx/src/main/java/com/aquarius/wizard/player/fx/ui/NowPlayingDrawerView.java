@@ -38,6 +38,12 @@ import java.util.List;
 /**
  * Immersive now-playing drawer content that keeps the old project feel while
  * replacing the original JFXDrawer implementation.
+ *
+ * <p>The drawer owns several animations and lyric labels that are recreated
+ * when songs change. Because this view can stay alive for the entire app
+ * session, it also exposes a small {@link #dispose()} hook so the shell can
+ * explicitly stop timers, release image references, and unbind lyric labels on
+ * shutdown.</p>
  */
 public final class NowPlayingDrawerView extends StackPane {
 
@@ -152,6 +158,30 @@ public final class NowPlayingDrawerView extends StackPane {
         }
         this.timelineLabel.setText(formatDuration(currentPosition) + "  /  " + formatDuration(this.currentTotalDuration));
         syncActiveLyricWithPlayback(currentPosition);
+    }
+
+    public void dispose() {
+        this.lyricTicker.stop();
+        this.lyricTicker.setOnFinished(null);
+        if (this.lyricScrollTimeline != null) {
+            this.lyricScrollTimeline.stop();
+            this.lyricScrollTimeline = null;
+        }
+        if (this.lyricStateTimeline != null) {
+            this.lyricStateTimeline.stop();
+            this.lyricStateTimeline = null;
+        }
+        if (this.rodAnimation != null) {
+            this.rodAnimation.stop();
+            this.rodAnimation = null;
+        }
+        if (this.vinylRotation != null) {
+            this.vinylRotation.stop();
+        }
+        releaseLyricLabels();
+        this.albumArtworkView.setImage(null);
+        this.vinylBaseImageView.setImage(null);
+        this.rodImageView.setImage(null);
     }
 
     private StackPane buildLayout() {
@@ -281,8 +311,7 @@ public final class NowPlayingDrawerView extends StackPane {
     }
 
     private void rebuildLyrics() {
-        this.lyricLabels.clear();
-        this.lyricTrack.getChildren().clear();
+        releaseLyricLabels();
 
         final List<LyricLine> lyricLines = this.currentSong.lyricLines();
         if (lyricLines == null || lyricLines.isEmpty()) {
@@ -309,6 +338,16 @@ public final class NowPlayingDrawerView extends StackPane {
         label.setTextAlignment(TextAlignment.CENTER);
         label.maxWidthProperty().bind(this.lyricViewport.widthProperty().subtract(92.0));
         return label;
+    }
+
+    private void releaseLyricLabels() {
+        for (final Label lyricLabel : this.lyricLabels) {
+            if (lyricLabel != null && lyricLabel.maxWidthProperty().isBound()) {
+                lyricLabel.maxWidthProperty().unbind();
+            }
+        }
+        this.lyricLabels.clear();
+        this.lyricTrack.getChildren().clear();
     }
 
     private void restartLyricTicker() {

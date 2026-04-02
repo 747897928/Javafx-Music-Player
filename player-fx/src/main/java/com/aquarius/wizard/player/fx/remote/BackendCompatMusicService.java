@@ -32,6 +32,11 @@ import java.util.regex.Pattern;
 /**
  * Reads Spring Boot compat endpoints that temporarily expose a NetEase-like
  * JSON subset while the JavaFX client is switching off the old direct calls.
+ *
+ * <p>This class deliberately hides most HTTP details from the UI layer. The
+ * JavaFX shell asks for "playlists", "songs", or "download this track", and
+ * this client is responsible for translating those requests into compat API
+ * calls, parsing JSON, and turning the result back into the shared UI model.</p>
  */
 public final class BackendCompatMusicService {
 
@@ -191,6 +196,8 @@ public final class BackendCompatMusicService {
             final String extension = resolveAudioExtension(downloadResponse.headers());
             final Path targetMusicFile = resolveAvailablePath(musicDirectory, fileStem, extension);
             final Path temporaryFile = Files.createTempFile(musicDirectory, "wizard-download-", ".part");
+            // Always stream into a temporary file first so the local library
+            // never sees a half-written track if the network drops mid-copy.
             try (InputStream inputStream = downloadResponse.body()) {
                 Files.copy(inputStream, temporaryFile, StandardCopyOption.REPLACE_EXISTING);
             } catch (Exception exception) {
@@ -204,6 +211,9 @@ public final class BackendCompatMusicService {
             }
 
             String resultMessage = "下载成功";
+            // Persist the song title / artist / album / cover into the audio
+            // file itself. This keeps the local-library view and any external
+            // music player aligned with the same metadata after download.
             final LocalAudioMetadataUtils.AudioTagWriteResult tagWriteResult = LocalAudioMetadataUtils.writeMetadata(
                 targetMusicFile,
                 firstNonBlank(songSummary.title(), stripExtension(targetMusicFile.getFileName().toString())),
@@ -221,6 +231,9 @@ public final class BackendCompatMusicService {
             final String lyricText = loadLyricText(songSummary);
             if (!lyricText.isBlank()) {
                 try {
+                    // Lyrics are stored next to local music by stem so the
+                    // existing local-library scanner can discover them without
+                    // any special online-module logic.
                     targetLyricFile = lyricDirectory.resolve(stripExtension(targetMusicFile.getFileName().toString()) + ".lrc");
                     Files.writeString(targetLyricFile, lyricText, StandardCharsets.UTF_8);
                 } catch (Exception exception) {
@@ -469,13 +482,27 @@ public final class BackendCompatMusicService {
     }
 
     private String resolveAudioExtension(final HttpHeaders headers) {
+        // The backend streaming endpoint intentionally avoids sending a
+        // filename-based Content-Disposition header because Tomcat 11 rejects
+        // non-ASCII values such as Chinese song names. Content-Type is the
+        // primary signal now; filename parsing remains as a fallback for
+        // external or older backends that may still include an ASCII header.
+        final String contentType = headers.firstValue("Content-Type").orElse("").toLowerCase(Locale.ROOT);
+        final String extensionFromContentType = resolveAudioExtensionFromContentType(contentType);
+        if (!extensionFromContentType.isBlank()) {
+            return extensionFromContentType;
+        }
+
         final String contentDisposition = headers.firstValue("Content-Disposition").orElse("");
         final String headerFileName = parseHeaderFileName(contentDisposition);
         final int lastDot = headerFileName.lastIndexOf('.');
         if (lastDot > 0 && lastDot < headerFileName.length() - 1) {
             return headerFileName.substring(lastDot);
         }
-        final String contentType = headers.firstValue("Content-Type").orElse("").toLowerCase(Locale.ROOT);
+        return ".mp3";
+    }
+
+    private String resolveAudioExtensionFromContentType(final String contentType) {
         if (contentType.contains("flac")) {
             return ".flac";
         }
@@ -491,7 +518,7 @@ public final class BackendCompatMusicService {
         if (contentType.contains("mpeg")) {
             return ".mp3";
         }
-        return ".mp3";
+        return "";
     }
 
     private String parseHeaderFileName(final String contentDisposition) {

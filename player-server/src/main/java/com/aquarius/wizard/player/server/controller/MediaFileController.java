@@ -3,8 +3,6 @@ package com.aquarius.wizard.player.server.controller;
 import com.aquarius.wizard.player.server.service.OnlineCatalogQueryService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +15,13 @@ import java.util.Objects;
 
 /**
  * Streams backend-managed audio files and embedded artwork to the desktop app.
+ *
+ * <p>This endpoint is optimized for in-app playback instead of browser-style
+ * downloads. We intentionally do not emit a {@code Content-Disposition}
+ * filename header here, because online-library files may use Chinese names and
+ * Tomcat 11 will reject non ISO-8859-1 header values. The JavaFX client only
+ * needs a stable stream plus a correct {@code Content-Type}, so omitting the
+ * filename header avoids noisy warnings without affecting playback.</p>
  */
 @RestController
 @RequestMapping("/api/files")
@@ -37,13 +42,9 @@ public class MediaFileController {
             .map(asset -> {
                 final Resource resource = asset.resource();
                 return ResponseEntity.ok()
-                .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
-                .cacheControl(CacheControl.noCache())
-                .header(
-                    HttpHeaders.CONTENT_DISPOSITION,
-                    ContentDisposition.inline().filename(asset.song().audioFile().getFileName().toString()).build().toString()
-                )
-                .body(resource);
+                    .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
+                    .cacheControl(CacheControl.noCache())
+                    .body(resource);
             })
             .orElseGet(() -> ResponseEntity.notFound().build());
     }

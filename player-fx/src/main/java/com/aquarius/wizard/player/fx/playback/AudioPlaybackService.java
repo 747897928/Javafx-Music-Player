@@ -32,13 +32,13 @@ public final class AudioPlaybackService {
             return;
         }
         disposePlayer();
-        this.currentSong = songSummary;
         try {
             this.mediaPlayer = new MediaPlayer(new Media(songSummary.mediaSource()));
         } catch (MediaException exception) {
             this.playbackListener.onPlaybackFailed("音频资源加载失败：" + exception.getMessage());
             return;
         }
+        this.currentSong = songSummary;
         this.currentTimeListener = (observable, oldValue, newValue) -> notifyTimeChanged();
         this.mediaPlayer.currentTimeProperty().addListener(this.currentTimeListener);
         this.mediaPlayer.setVolume(this.currentVolume);
@@ -128,6 +128,9 @@ public final class AudioPlaybackService {
             this.mediaPlayer.currentTimeProperty().removeListener(this.currentTimeListener);
             this.currentTimeListener = null;
         }
+        // Clear JavaFX callbacks before disposing the player so the old media
+        // instance cannot keep calling back into the shell while a new song is
+        // being prepared.
         this.mediaPlayer.setOnReady(null);
         this.mediaPlayer.setOnPlaying(null);
         this.mediaPlayer.setOnPaused(null);
