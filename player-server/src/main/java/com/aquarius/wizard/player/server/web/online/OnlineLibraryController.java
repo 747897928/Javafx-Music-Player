@@ -1,9 +1,11 @@
-package com.aquarius.wizard.player.server.web;
+package com.aquarius.wizard.player.server.web.online;
 
-import com.aquarius.wizard.player.server.library.BackendOnlineCatalogService;
-import com.aquarius.wizard.player.server.library.BackendOnlineCatalogService.CatalogSong;
-import com.aquarius.wizard.player.server.library.BackendOnlineCatalogService.ImportResult;
-import com.aquarius.wizard.player.server.library.BackendOnlineCatalogService.RefreshResult;
+import com.aquarius.wizard.player.server.online.application.OnlineCatalogQueryService;
+import com.aquarius.wizard.player.server.online.application.OnlineCatalogSynchronizationService;
+import com.aquarius.wizard.player.server.online.application.OnlineLibraryImportService;
+import com.aquarius.wizard.player.server.online.application.result.OnlineCatalogRefreshResult;
+import com.aquarius.wizard.player.server.online.application.result.OnlineLibraryImportResult;
+import com.aquarius.wizard.player.server.online.domain.model.CatalogSong;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,24 +18,38 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Small management surface for the backend-managed online music library.
+ * Management endpoints for the backend-managed online library.
  */
 @RestController
 @RequestMapping("/api/online/library")
 public class OnlineLibraryController {
 
-    private final BackendOnlineCatalogService backendOnlineCatalogService;
+    private final OnlineCatalogQueryService onlineCatalogQueryService;
+    private final OnlineCatalogSynchronizationService onlineCatalogSynchronizationService;
+    private final OnlineLibraryImportService onlineLibraryImportService;
 
-    public OnlineLibraryController(final BackendOnlineCatalogService backendOnlineCatalogService) {
-        this.backendOnlineCatalogService = Objects.requireNonNull(
-            backendOnlineCatalogService,
-            "backendOnlineCatalogService must not be null"
+    public OnlineLibraryController(
+        final OnlineCatalogQueryService onlineCatalogQueryService,
+        final OnlineCatalogSynchronizationService onlineCatalogSynchronizationService,
+        final OnlineLibraryImportService onlineLibraryImportService
+    ) {
+        this.onlineCatalogQueryService = Objects.requireNonNull(
+            onlineCatalogQueryService,
+            "onlineCatalogQueryService must not be null"
+        );
+        this.onlineCatalogSynchronizationService = Objects.requireNonNull(
+            onlineCatalogSynchronizationService,
+            "onlineCatalogSynchronizationService must not be null"
+        );
+        this.onlineLibraryImportService = Objects.requireNonNull(
+            onlineLibraryImportService,
+            "onlineLibraryImportService must not be null"
         );
     }
 
     @GetMapping("/tracks")
     public TrackListResponse tracks() {
-        final List<TrackPayload> tracks = this.backendOnlineCatalogService.listTracks().stream()
+        final List<TrackPayload> tracks = this.onlineCatalogQueryService.listTracks().stream()
             .map(this::mapTrack)
             .toList();
         return new TrackListResponse(tracks.size(), tracks);
@@ -41,13 +57,13 @@ public class OnlineLibraryController {
 
     @PostMapping("/refresh")
     public RefreshResponse refresh() {
-        final RefreshResult refreshResult = this.backendOnlineCatalogService.refreshCatalog();
+        final OnlineCatalogRefreshResult refreshResult = this.onlineCatalogSynchronizationService.refreshCatalog();
         return new RefreshResponse("ok", refreshResult.trackCount(), refreshResult.synchronizedAtUtc().toString());
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ImportResponse importFiles(@RequestParam("files") final List<MultipartFile> files) {
-        final ImportResult importResult = this.backendOnlineCatalogService.importFiles(files);
+        final OnlineLibraryImportResult importResult = this.onlineLibraryImportService.importFiles(files);
         return new ImportResponse(
             "ok",
             importResult.importedAudioCount(),

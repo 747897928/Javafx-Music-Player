@@ -1,8 +1,8 @@
 package com.aquarius.wizard.player.server.web.compat;
 
-import com.aquarius.wizard.player.server.library.BackendOnlineCatalogService;
-import com.aquarius.wizard.player.server.library.BackendOnlineCatalogService.CatalogSong;
-import com.aquarius.wizard.player.server.library.BackendOnlineCatalogService.FeaturedPlaylist;
+import com.aquarius.wizard.player.server.online.application.OnlineCatalogQueryService;
+import com.aquarius.wizard.player.server.online.domain.model.CatalogSong;
+import com.aquarius.wizard.player.server.online.domain.model.FeaturedPlaylist;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,12 +23,12 @@ import java.util.Optional;
 @RequestMapping("/api/compat/netease")
 public class NeteaseCompatController {
 
-    private final BackendOnlineCatalogService backendOnlineCatalogService;
+    private final OnlineCatalogQueryService onlineCatalogQueryService;
 
-    public NeteaseCompatController(final BackendOnlineCatalogService backendOnlineCatalogService) {
-        this.backendOnlineCatalogService = Objects.requireNonNull(
-            backendOnlineCatalogService,
-            "backendOnlineCatalogService must not be null"
+    public NeteaseCompatController(final OnlineCatalogQueryService onlineCatalogQueryService) {
+        this.onlineCatalogQueryService = Objects.requireNonNull(
+            onlineCatalogQueryService,
+            "onlineCatalogQueryService must not be null"
         );
     }
 
@@ -37,7 +37,7 @@ public class NeteaseCompatController {
         @RequestParam(name = "limit", defaultValue = "18") final int limit,
         final HttpServletRequest request
     ) {
-        final List<PersonalizedPlaylistItem> result = this.backendOnlineCatalogService.loadFeaturedPlaylists(limit).stream()
+        final List<PersonalizedPlaylistItem> result = this.onlineCatalogQueryService.loadFeaturedPlaylists(limit).stream()
             .map(playlist -> new PersonalizedPlaylistItem(
                 playlist.id(),
                 playlist.name(),
@@ -53,7 +53,7 @@ public class NeteaseCompatController {
         @RequestParam("id") final String playlistId,
         final HttpServletRequest request
     ) {
-        return this.backendOnlineCatalogService.loadPlaylist(playlistId)
+        return this.onlineCatalogQueryService.loadPlaylist(playlistId)
             .map(playlist -> new PlaylistDetailResponse(200, mapPlaylist(playlist, request)))
             .orElseGet(() -> new PlaylistDetailResponse(
                 404,
@@ -67,7 +67,7 @@ public class NeteaseCompatController {
         @RequestParam(name = "limit", defaultValue = "20") final int limit,
         final HttpServletRequest request
     ) {
-        final List<CompatSong> songs = this.backendOnlineCatalogService.searchSongs(keyword, limit).stream()
+        final List<CompatSong> songs = this.onlineCatalogQueryService.searchSongs(keyword, limit).stream()
             .map(song -> mapSong(song, request))
             .toList();
         return new SearchResponse(200, new SearchResult(songs.size(), songs));
@@ -75,7 +75,7 @@ public class NeteaseCompatController {
 
     @GetMapping("/song/lyric")
     public LyricResponse lyric(@RequestParam("id") final String songId) {
-        final String lyricText = this.backendOnlineCatalogService.loadLyricText(songId);
+        final String lyricText = this.onlineCatalogQueryService.loadLyricText(songId);
         return new LyricResponse(lyricText.isBlank() ? 404 : 200, new LyricPayload(lyricText));
     }
 
@@ -85,7 +85,7 @@ public class NeteaseCompatController {
         final HttpServletRequest request
     ) {
         final List<PlayerUrlPayload> data = parseSongIds(ids).stream()
-            .map(this.backendOnlineCatalogService::findSong)
+            .map(this.onlineCatalogQueryService::findSong)
             .flatMap(Optional::stream)
             .map(song -> new PlayerUrlPayload(song.id(), buildAudioUrl(song, request)))
             .toList();

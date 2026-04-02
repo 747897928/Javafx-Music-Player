@@ -29,9 +29,6 @@ import java.util.regex.Pattern;
  */
 public final class BackendCompatMusicService {
 
-    private static final String DEFAULT_SERVER_BASE_URL = "http://127.0.0.1:18080";
-    private static final String SERVER_BASE_URL_PROPERTY = "wizard.player.server.base-url";
-    private static final String SERVER_BASE_URL_ENV = "WIZARD_PLAYER_SERVER_BASE_URL";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Pattern LRC_PATTERN = Pattern.compile("\\[(\\d{2}):(\\d{2})(?:\\.(\\d{1,3}))?](.*)");
 
@@ -43,11 +40,11 @@ public final class BackendCompatMusicService {
     private final String serverBaseUrl;
 
     public BackendCompatMusicService() {
-        this(resolveServerBaseUrl());
+        this(BackendServerEndpointResolver.resolveBaseUrl());
     }
 
     BackendCompatMusicService(final String serverBaseUrl) {
-        this.serverBaseUrl = normalizeBaseUrl(serverBaseUrl);
+        this.serverBaseUrl = serverBaseUrl;
     }
 
     public List<FxSampleData.PlaylistDetail> loadFeaturedPlaylists() {
@@ -348,22 +345,4 @@ public final class BackendCompatMusicService {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    private static String resolveServerBaseUrl() {
-        final String propertyValue = System.getProperty(SERVER_BASE_URL_PROPERTY);
-        if (propertyValue != null && !propertyValue.isBlank()) {
-            return propertyValue;
-        }
-        final String environmentValue = System.getenv(SERVER_BASE_URL_ENV);
-        if (environmentValue != null && !environmentValue.isBlank()) {
-            return environmentValue;
-        }
-        return DEFAULT_SERVER_BASE_URL;
-    }
-
-    private String normalizeBaseUrl(final String baseUrl) {
-        if (baseUrl == null || baseUrl.isBlank()) {
-            return DEFAULT_SERVER_BASE_URL;
-        }
-        return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-    }
 }

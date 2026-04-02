@@ -24,9 +24,6 @@ import java.util.Locale;
  */
 public final class BackendOnlineLibraryService {
 
-    private static final String DEFAULT_SERVER_BASE_URL = "http://127.0.0.1:18080";
-    private static final String SERVER_BASE_URL_PROPERTY = "wizard.player.server.base-url";
-    private static final String SERVER_BASE_URL_ENV = "WIZARD_PLAYER_SERVER_BASE_URL";
     private static final List<String> IMPORTABLE_SUFFIXES = List.of(".mp3", ".wav", ".m4a", ".flac", ".aac", ".pcm", ".lrc");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -38,11 +35,11 @@ public final class BackendOnlineLibraryService {
     private final String serverBaseUrl;
 
     public BackendOnlineLibraryService() {
-        this(resolveServerBaseUrl());
+        this(BackendServerEndpointResolver.resolveBaseUrl());
     }
 
     BackendOnlineLibraryService(final String serverBaseUrl) {
-        this.serverBaseUrl = normalizeBaseUrl(serverBaseUrl);
+        this.serverBaseUrl = serverBaseUrl;
     }
 
     public RefreshResult refreshCatalog() {
@@ -196,25 +193,6 @@ public final class BackendOnlineLibraryService {
 
     private String escapeMultipartFileName(final String fileName) {
         return fileName.replace("\\", "_").replace("\"", "'");
-    }
-
-    private static String resolveServerBaseUrl() {
-        final String propertyValue = System.getProperty(SERVER_BASE_URL_PROPERTY);
-        if (propertyValue != null && !propertyValue.isBlank()) {
-            return propertyValue;
-        }
-        final String environmentValue = System.getenv(SERVER_BASE_URL_ENV);
-        if (environmentValue != null && !environmentValue.isBlank()) {
-            return environmentValue;
-        }
-        return DEFAULT_SERVER_BASE_URL;
-    }
-
-    private String normalizeBaseUrl(final String baseUrl) {
-        if (baseUrl == null || baseUrl.isBlank()) {
-            return DEFAULT_SERVER_BASE_URL;
-        }
-        return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
 
     public record RefreshResult(String status, int trackCount, String synchronizedAtUtc) {

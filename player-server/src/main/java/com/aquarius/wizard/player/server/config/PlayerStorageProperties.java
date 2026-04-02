@@ -18,16 +18,16 @@ public class PlayerStorageProperties {
     private String databaseFileName = "musicbox.db";
 
     @NotBlank
-    private String musicDirectory = "library/music";
+    private String musicDirectory = "online/music";
 
     @NotBlank
-    private String lyricsDirectory = "library/lyrics";
+    private String lyricsDirectory = "online/lyrics";
 
     @NotBlank
-    private String coversDirectory = "library/covers";
+    private String coversDirectory = "online/covers";
 
     @NotBlank
-    private String cacheDirectory = "cache";
+    private String cacheDirectory = "online/cache";
 
     public String getRoot() {
         return this.root;

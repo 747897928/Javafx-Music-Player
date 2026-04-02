@@ -4,6 +4,9 @@ spring:
   datasource:
     url: jdbc:sqlite:${player.storage.root}/${player.storage.database-file-name}
     driver-class-name: org.sqlite.JDBC
+  sql:
+    init:
+      mode: always
   servlet:
     multipart:
       max-file-size: 256MB
@@ -19,6 +22,8 @@ management:
         include: health,info
 
 logging:
+  file:
+    name: ./logs/player-server.log
   level:
     org.jaudiotagger: error
 
