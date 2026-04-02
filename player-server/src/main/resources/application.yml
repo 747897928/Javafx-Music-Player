@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: wizard-music-server
+  datasource:
+    url: jdbc:sqlite:${player.storage.root}/${player.storage.database-file-name}
+    driver-class-name: org.sqlite.JDBC
+  sql:
+    init:
+      mode: always
+  servlet:
+    multipart:
+      max-file-size: 256MB
+      max-request-size: 512MB
+
+server:
+  port: 18080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  file:
+    name: ./logs/player-server.log
+  level:
+    org.jaudiotagger: error
+
+mybatis-plus:
+  global-config:
+    banner: false
+  configuration:
+    map-underscore-to-camel-case: true
+
+player:
+  storage:
+    root: ./runtime
+    database-file-name: musicbox.db
+    music-directory: online/music
+    lyrics-directory: online/lyrics
+    covers-directory: online/covers
+    cache-directory: online/cache

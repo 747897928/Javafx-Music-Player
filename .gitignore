@@ -1,0 +1,9 @@
+.idea/
+logs/
+target/
+runtime/
+LocalMusic/
+*.log
+dist/
+.package-work/
+.private-docs/
