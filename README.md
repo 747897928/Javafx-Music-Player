@@ -1,16 +1,42 @@
-# Javafx音乐播放器(Wizard Music Box)
+<p align="center">
+	<strong>JavaFX 音乐播放器（Wizard Music Box）</strong>
+</p>
+<p align="center">
+<a target="_blank" href="https://github.com/747897928/Javafx-Music-Player">
+    <img src="https://img.shields.io/badge/license-GPL%20v3-blue.svg" ></img>
+</a>
+<a target="_blank" href="https://github.com/747897928/Javafx-Music-Player">
+        <img src="https://img.shields.io/badge/Java-17%2B-green.svg" ></img>
+        <img src="https://img.shields.io/badge/JavaFX-17.0.1-0A6BFF.svg" ></img>
+        <img src="https://img.shields.io/badge/Spring%20Boot-4.0.5-6DB33F.svg" ></img>
+        <img src="https://img.shields.io/badge/MyBatis--Plus-3.5.15-2C7BE5.svg" ></img>
+        <img src="https://img.shields.io/badge/SQLite-3.51.1.0-003B57.svg" ></img>
+        <img src="https://img.shields.io/badge/Jaudiotagger-2.0.3-orange.svg" ></img>
+        <img src="https://img.shields.io/badge/Maven-3.9%2B-C71A36.svg" ></img></a>
+</p>
+
+<p align="center">
+  <a href="./README_EN.md">English README</a>
+</p>
 
 ## 介绍
 
-这是款由纯java语言开发的在线音乐播放器，当然也支持播放本地的音乐，在本地音乐模块主要采用目前java最主流的音频标记库Jaudiotagger，可解析MP3文件头信息，比如提取内嵌到音频文件内的音乐封面，也可以将音乐封面写入到音频文件内，支持的音频文件主要为MP3，当然也支持wav，包括嵌入和链接图像支持。可读取音频文件头信息里的歌曲名，专辑、歌手名等元信息。在线模块由简易的Spring Boot 4后端应用程序完成。其余功能：碟片旋转，歌词滚动特效，歌词同步，最小化精简模式，桌面歌词，切换歌单，下载音乐，最小化系统托盘，少量Material Design风格等。
+这是一个以 Java 为主的跨平台音乐播放器项目，由 `JavaFX` 桌面端和 `Spring Boot 4` 后端组成。桌面端负责播放控制、迷你模式、桌面歌词、系统托盘、拖拽导入等交互；服务端负责在线曲库导入、媒体文件访问、搜索与元数据管理。
+
+本地音频元数据解析基于 `Jaudiotagger`，可读取歌曲名、专辑、歌手、时长、嵌入封面等信息。后端数据层使用 `MyBatis-Plus`，默认数据库为 `SQLite`，同时保留 `MySQL` 和 `PostgreSQL` 运行时驱动，便于按需切换。
 
 #### 软件架构
 
-（Jdk17.0.1）or Jdk 1.8_201（需要更换成jfoenix8.0.8版本），由于使用了动画，会出现大量的内存碎片，推荐使用jdk17，不是很推荐用jdk8。
+- 多模块 Maven 项目
+- `player-fx` 为 `JavaFX 17.0.1` 桌面客户端
+- `player-server` 为 `Spring Boot 4.0.5` 后端服务
+- 后端默认使用 `SQLite`，数据访问基于 `MyBatis-Plus 3.5.15`
+- 音频标签解析使用 `Jaudiotagger 2.0.3`
+- 当前开发与运行环境建议使用 `JDK 17+`
 
 #### 注意事项
 
-  毕竟是java编写的图形界面，而且加了不少动画，内存多多少少不会像c那样低，不过在代码编写方式上，已经很注意对象的创建，大量的对象都是复用的。监听器对象也是复用的。经过测试，jdk17为例：最小内存129mb，最大内存达到了380mb，jdk8内存消耗更多，不以这个作为参照。
+  桌面端基于 JavaFX，并包含较多动画与图片处理逻辑，内存占用不会像原生 GUI 那样低。当前代码已经尽量复用对象、监听器与资源，实际运行时仍建议优先使用 `JDK 17+`，不要再以旧版 `JDK 8` 作为主要运行目标。
 
 #### 使用说明
 
