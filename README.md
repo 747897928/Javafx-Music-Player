@@ -1,198 +1,562 @@
 <p align="center">
-	<strong>JavaFX 音乐播放器（Wizard Music Box）</strong>
+  <strong>JavaFX 音乐播放器（Wizard Music Box）</strong>
 </p>
 <p align="center">
-<a target="_blank" href="https://github.com/747897928/Javafx-Music-Player">
-    <img src="https://img.shields.io/badge/license-GPL%20v3-blue.svg" ></img>
-</a>
-<a target="_blank" href="https://github.com/747897928/Javafx-Music-Player">
-        <img src="https://img.shields.io/badge/Java-17%2B-green.svg" ></img>
-        <img src="https://img.shields.io/badge/JavaFX-17.0.1-0A6BFF.svg" ></img>
-        <img src="https://img.shields.io/badge/Spring%20Boot-4.0.5-6DB33F.svg" ></img>
-        <img src="https://img.shields.io/badge/MyBatis--Plus-3.5.15-2C7BE5.svg" ></img>
-        <img src="https://img.shields.io/badge/SQLite-3.51.1.0-003B57.svg" ></img>
-        <img src="https://img.shields.io/badge/Jaudiotagger-2.0.3-orange.svg" ></img>
-        <img src="https://img.shields.io/badge/Maven-3.9%2B-C71A36.svg" ></img></a>
+  <a target="_blank" href="https://github.com/747897928/Javafx-Music-Player">
+    <img src="https://img.shields.io/badge/license-GPL%20v3-blue.svg"></img>
+  </a>
+  <a target="_blank" href="https://github.com/747897928/Javafx-Music-Player">
+    <img src="https://img.shields.io/badge/Java-17%2B-green.svg"></img>
+    <img src="https://img.shields.io/badge/JavaFX-17.0.1-0A6BFF.svg"></img>
+    <img src="https://img.shields.io/badge/Spring%20Boot-4.0.5-6DB33F.svg"></img>
+    <img src="https://img.shields.io/badge/MyBatis--Plus-3.5.15-2C7BE5.svg"></img>
+    <img src="https://img.shields.io/badge/SQLite-3.51.1.0-003B57.svg"></img>
+    <img src="https://img.shields.io/badge/Jaudiotagger-2.0.3-orange.svg"></img>
+    <img src="https://img.shields.io/badge/Maven-3.9%2B-C71A36.svg"></img>
+  </a>
 </p>
 
 <p align="center">
   <a href="./README_EN.md">English README</a>
 </p>
 
-## 介绍
+## 1. 项目简介
 
-这是一个以 Java 为主的跨平台音乐播放器项目，由 `JavaFX` 桌面端和 `Spring Boot 4` 后端组成。桌面端负责播放控制、迷你模式、桌面歌词、系统托盘、拖拽导入等交互；服务端负责在线曲库导入、媒体文件访问、搜索与元数据管理。
+Wizard Music Box 是一个面向桌面场景的音乐播放器项目，代码仓库同时包含 JavaFX 客户端和 Spring Boot 后端。
 
-本地音频元数据解析基于 `Jaudiotagger`，可读取歌曲名、专辑、歌手、时长、嵌入封面等信息。后端数据层使用 `MyBatis-Plus`，默认数据库为 `SQLite`，同时保留 `MySQL` 和 `PostgreSQL` 运行时驱动，便于按需切换。
+这个项目当前有两条能力线：
 
-#### 软件架构
+1. 本地音乐播放  
+   客户端负责扫描本地目录、读取音频标签、加载歌词、播放音频，并提供迷你模式、桌面歌词、系统托盘等桌面交互。
 
-- 多模块 Maven 项目
-- `player-fx` 为 `JavaFX 17.0.1` 桌面客户端
-- `player-server` 为 `Spring Boot 4.0.5` 后端服务
-- 后端默认使用 `SQLite`，数据访问基于 `MyBatis-Plus 3.5.15`
-- 音频标签解析使用 `Jaudiotagger 2.0.3`
-- 当前开发与运行环境建议使用 `JDK 17+`
+2. 在线曲库管理  
+   后端负责维护一套由本地文件驱动的在线曲库，处理导入、扫描、元数据同步、搜索、歌词读取、音频流输出等工作。客户端通过 HTTP 接口读取这部分数据。
 
-#### 注意事项
+如果你只想使用播放器，这份文档会告诉你怎么启动、怎么配置、怎么打包。  
+如果你准备继续开发，这份文档也会交代模块划分、目录约定、运行方式和后端接口入口。
 
-  桌面端基于 JavaFX，并包含较多动画与图片处理逻辑，内存占用不会像原生 GUI 那样低。当前代码已经尽量复用对象、监听器与资源，实际运行时仍建议优先使用 `JDK 17+`，不要再以旧版 `JDK 8` 作为主要运行目标。
+## 2. 界面预览
 
-#### 使用说明
+### 2.1 发现音乐
 
-- 本地优先的跨平台桌面音乐播放器
-- JavaFX 桌面端负责 UI、播放控制、桌面歌词、迷你模式、托盘等交互
-- Spring Boot 4 后端负责在线模块的数据入口、文件访问、在线导入与元数据管理
-- 默认数据库使用 SQLite，不要求额外安装 MySQL / PostgreSQL
-- 客户端只调用自建后端
+发现音乐区域的数据来自后端，可通过界面右侧按钮刷新内容。
 
-## 当前功能
+![发现音乐](README.assets/image-20260402195302708.png)
 
-- 本地音乐导入、扫描、播放
-- 本地 `.lrc` 歌词加载
-- 本地音频标签与内嵌封面读取
-- 在线歌单、歌单详情、搜索、歌词、播放地址由自建后端承接
-- 后端在线曲库导入、刷新、音频流访问
-- 在线歌曲可下载到 `./LocalMusic`，并写入标题、歌手、专辑、封面标签
-- 歌单封面可拖拽到系统保存，或右键复制封面链接
-- 支持拖拽音频和 `.lrc` 文件批量导入本地音乐目录
-- 迷你模式、桌面歌词、系统托盘
+### 2.2 歌单与本地音乐
 
-## 使用提示
+歌单表格可以展示发现音乐结果、本地音乐和搜索结果。本地音乐默认从 `LocalMusic/Music` 读取，歌词默认从 `LocalMusic/Lrc` 读取。
 
-1. 本地音乐默认从 `./LocalMusic/Music` 扫描，歌词默认从 `./LocalMusic/Lrc` 扫描。
-2. 在线歌曲可直接播放，也可以通过“下载当前音乐”保存到本地音乐目录。
-3. 歌单封面支持拖拽导出；表格和播放相关操作以右键菜单为主。
-4. 本地导入支持音频文件和 `.lrc` 歌词文件一起处理。
+![歌单与本地音乐](README.assets/image-20260402195507538.png)
 
-## 模块结构
+### 2.3 桌面歌词与迷你模式
 
-- `player-common`
-  - 通用响应、路径工具、轻量 Jackson 工具
-- `player-model`
-  - 桌面端与服务端共享的轻量业务模型
-- `player-server`
-  - Spring Boot 4 后端
-- `player-fx`
-  - JavaFX 桌面客户端
+歌词支持同步显示，也可以独立显示在桌面歌词窗口中。迷你模式下依旧可以完成常用播放操作。
 
-## 默认目录
+![桌面歌词与迷你模式](README.assets/image-20260402195616248.png)
 
-- 本地音乐
-  - `./LocalMusic/Music`
-- 本地歌词
-  - `./LocalMusic/Lrc`
-- 后端在线音乐
-  - `./runtime/online/music`
-- 后端在线歌词
-  - `./runtime/online/lyrics`
-- 后端在线封面
-  - `./runtime/online/covers`
-- SQLite
-  - `./runtime/musicbox.db`
-- 后端日志
-  - `./logs/player-server.log`
-- 桌面端后端地址配置
-  - `./config/player-fx.ini`
+### 2.4 封面拖拽与文件导入
 
-## 环境要求
+封面可以直接拖出到系统中保存，音频和歌词文件也可以拖入指定区域完成批量导入。
 
-- JDK 17+
-- Maven 3.9+
+![封面拖拽](README.assets/image-20260402195739321.png)
 
-默认开发模式不要求额外安装数据库。
+![文件导入 1](README.assets/image-20260402195817202.png)
 
-## 启动方式
+![文件导入 2](README.assets/image-20260402195855296.png)
 
-先启动后端：
+![文件导入 3](README.assets/image-20260402195916234.png)
+
+### 2.5 其他界面
+
+![其他界面 1](README.assets/image-20260402200030312.png)
+
+![其他界面 2](README.assets/image-20260402195940649.png)
+
+## 3. 技术栈
+
+项目当前使用的主要技术如下：
+
+1. Java 17  
+   根 `pom.xml` 中统一声明 `java.version=17`，当前构建与运行都以 JDK 17 为基准。
+
+2. JavaFX 17.0.1  
+   桌面端位于 `player-fx`，使用 `javafx-controls`、`javafx-media`、`javafx-fxml`、`javafx-swing`。
+
+3. Spring Boot 4.0.5  
+   后端位于 `player-server`，主要使用 Web MVC、Validation、Actuator。
+
+4. MyBatis Plus 3.5.15  
+   用于后端数据访问与表记录同步。
+
+5. SQLite 3.51.1.0  
+   这是默认数据库，开箱即可运行。运行时也保留了 MySQL 和 PostgreSQL 驱动，便于后续切换。
+
+6. Jaudiotagger 2.0.3  
+   用于读取本地音频标签、时长、封面等元数据。
+
+7. Maven 3.9+  
+   整个仓库采用多模块 Maven 结构。
+
+## 4. 核心功能
+
+### 4.1 本地音乐能力
+
+1. 扫描本地音乐目录
+2. 读取 `.mp3`、`.wav` 等音频文件的基础元数据
+3. 加载 `.lrc` 歌词文件
+4. 读取音频内嵌封面
+5. 支持拖拽导入音频和歌词文件
+6. 支持下载在线歌曲到本地目录
+
+### 4.2 桌面端交互能力
+
+1. 主播放器界面
+2. 迷你模式
+3. 桌面歌词
+4. 系统托盘
+5. 封面拖拽导出
+6. 右键菜单操作
+
+### 4.3 后端在线曲库能力
+
+1. 导入在线曲库文件
+2. 扫描 `runtime/online` 下的音频、歌词和封面资源
+3. 将扫描结果同步到 SQLite
+4. 提供歌单、歌曲、搜索、歌词、播放地址接口
+5. 提供音频流和封面访问接口
+6. 提供一组兼容旧客户端调用方式的兼容接口
+
+## 5. 模块结构
+
+仓库采用多模块结构，根模块负责编译参数、公共版本和插件管理，业务代码拆分为四个子模块。
+
+### 5.1 `player-common`
+
+公共基础模块，当前主要放这类内容：
+
+1. 通用响应对象 `ApiResponse`
+2. 路径解析工具 `WorkspacePathResolver`
+3. Jackson 工具类 `JacksonUtils`
+
+### 5.2 `player-model`
+
+共享模型模块，供桌面端和后端共用。当前包含：
+
+1. `SongSummary`
+2. `PlaylistSummary`
+3. `LyricLine`
+
+### 5.3 `player-server`
+
+后端服务模块，负责在线曲库与媒体访问。核心组成如下：
+
+1. `controller`
+   对外提供 HTTP 接口
+
+2. `service`
+   处理在线曲库查询、同步、导入
+
+3. `repository` 和 `mapper`
+   负责数据库访问
+
+4. `support/storage`
+   负责在线曲库目录布局、文件存储、目录解析
+
+5. `support/metadata`
+   负责音频元数据读取
+
+6. `config`
+   放置存储配置和 MyBatis Plus 配置
+
+### 5.4 `player-fx`
+
+桌面客户端模块，负责 UI、播放和后端通信。核心组成如下：
+
+1. `playback`
+   音频播放控制
+
+2. `local`
+   本地音乐扫描与元数据读取
+
+3. `remote`
+   后端地址解析与接口调用
+
+4. `ui`
+   主界面、迷你模式、桌面歌词、提示组件、抽屉视图等桌面 UI
+
+## 6. 运行环境
+
+### 6.1 基本要求
+
+1. JDK 17 或更高版本
+2. Maven 3.9 或更高版本
+3. Windows、Linux、macOS 任一可运行 JavaFX 的桌面环境
+
+### 6.2 打包附加要求
+
+如果需要打包桌面客户端，还需要：
+
+1. 当前 JDK 自带 `jpackage`
+2. 系统允许执行对应平台的打包命令
+
+### 6.3 默认端口
+
+后端默认监听：
+
+```text
+18080
+```
+
+## 7. 快速启动
+
+### 7.1 启动后端
+
+在仓库根目录执行：
 
 ```bash
 mvn -pl player-server spring-boot:run
 ```
 
-再启动桌面端：
+启动后可访问：
+
+```text
+http://127.0.0.1:18080/api/system/summary
+```
+
+### 7.2 启动桌面端
+
+新开一个终端，在仓库根目录执行：
 
 ```bash
 mvn -pl player-fx javafx:run
 ```
 
-如果桌面端需要连接其他后端地址，可修改：
+### 7.3 本地联调顺序
 
-- `config/player-fx.ini`
+建议按下面的顺序启动：
 
-示例：
+1. 先启动 `player-server`
+2. 确认 `http://127.0.0.1:18080/api/system/summary` 可访问
+3. 再启动 `player-fx`
+
+## 8. 配置说明
+
+### 8.1 后端配置
+
+后端默认配置文件位于：
+
+```text
+player-server/src/main/resources/application.yml
+```
+
+当前默认配置的关键项如下：
+
+1. 应用名  
+   `spring.application.name=wizard-music-server`
+
+2. 数据库连接  
+   默认使用 SQLite，URL 指向 `runtime/musicbox.db`
+
+3. 端口  
+   `server.port=18080`
+
+4. 日志文件  
+   `./logs/player-server.log`
+
+5. 在线曲库目录  
+   `runtime/online/music`  
+   `runtime/online/lyrics`  
+   `runtime/online/covers`  
+   `runtime/online/cache`
+
+### 8.2 桌面端配置
+
+桌面端运行时配置文件位于：
+
+```text
+config/player-fx.ini
+```
+
+当前示例内容如下：
 
 ```ini
 server.base-url=http://127.0.0.1:18080
 ```
 
-## 打包与部署
+如果桌面端需要连接别的后端实例，修改这个地址即可。
 
-服务端和桌面端是两套独立产物，部署时应分开处理：
+## 9. 目录结构与数据文件
 
-- 服务端部署到服务器或自管主机
-- 桌面端打包后分发给最终用户
+### 9.1 运行期常用目录
 
-仓库已提供打包脚本：
+1. 本地音乐目录
 
-- 服务端打包
-  - `scripts/package-server.ps1`
-  - `scripts/package-server.sh`
-- 桌面端打包
-  - `scripts/package-client.ps1`
-  - `scripts/package-client.sh`
+```text
+./LocalMusic/Music
+```
 
-示例：
+2. 本地歌词目录
+
+```text
+./LocalMusic/Lrc
+```
+
+3. 后端在线音频目录
+
+```text
+./runtime/online/music
+```
+
+4. 后端在线歌词目录
+
+```text
+./runtime/online/lyrics
+```
+
+5. 后端在线封面目录
+
+```text
+./runtime/online/covers
+```
+
+6. 后端缓存目录
+
+```text
+./runtime/online/cache
+```
+
+7. SQLite 数据库文件
+
+```text
+./runtime/musicbox.db
+```
+
+8. 日志目录
+
+```text
+./logs
+```
+
+### 9.2 数据表说明
+
+后端初始化脚本位于：
+
+```text
+player-server/src/main/resources/schema.sql
+```
+
+当前核心表为 `online_track`，保存在线曲库歌曲的基础信息，包括：
+
+1. 歌曲 ID
+2. 文件名与文件主名
+3. 音频与歌词相对路径
+4. 标题、歌手、专辑
+5. 时长
+6. 是否有封面
+7. 文件修改时间
+8. 同步时间
+
+## 10. 打包与部署
+
+项目提供了服务端和客户端各自的打包脚本。
+
+### 10.1 打包后端
+
+PowerShell：
 
 ```powershell
 ./scripts/package-server.ps1
+```
+
+Shell：
+
+```bash
+./scripts/package-server.sh
+```
+
+默认输出目录：
+
+```text
+./dist/server/WizardMusicServer
+```
+
+压缩包输出：
+
+```text
+./dist/server/WizardMusicServer.zip
+```
+
+后端打包结果中会包含：
+
+1. `wizard-music-server.jar`
+2. `config/application.yml`
+3. `bin/start-server.ps1`
+4. `bin/start-server.sh`
+5. `logs`
+6. `runtime/online/*`
+
+### 10.2 打包桌面端
+
+PowerShell：
+
+```powershell
+./scripts/package-client.ps1
+```
+
+如果要在打包时写入指定后端地址，可以这样执行：
+
+```powershell
 ./scripts/package-client.ps1 -ServerBaseUrl "http://your-server-host:18080"
 ```
 
-打包输出默认位于：
+Shell：
 
-- `./dist/server/WizardMusicServer`
-- `./dist/client/WizardMusicBox`
+```bash
+./scripts/package-client.sh
+```
 
-## 界面预览
+默认输出目录：
 
-#### 使用说明
+```text
+./dist/client/WizardMusicBox
+```
 
+压缩包输出：
 
-1.  发现音乐的歌单是从后端获取的，可以点击发现音乐栏右边的按钮更新发现音乐栏的内容，这个操作会发送一条https请求。
- ![image-20260402195302708](README.assets/image-20260402195302708.png)
+```text
+./dist/client/WizardMusicBox.zip
+```
 
-2. 歌单列表可以是发现音乐栏里的一个，也可以是本地音乐，还可以是搜索结果后的，如果要加载本地音乐，点击本地音乐栏右边的文件夹按钮，打开本地音乐文件夹，一般这个文件夹都是相对于程序所在路径，在LocalMusic/Muisc文件夹内放音乐文件重新点击本地音乐栏就能加载本地音乐，如果需要歌词，请在LocalMusic/Lrc文件夹下放.lrc文件，注意，下载当前音乐会把音乐文件下载到LocalMusic文件夹内，lrc和音乐文件会放到对应的文件夹。表格右键会弹出菜单，比如你喜欢当前播放的专辑封面，可以点击菜单栏复制到剪切板。
+桌面端打包脚本会通过 `jpackage` 生成可分发目录，并自动写入：
 
-   ![image-20260402195507538](README.assets/image-20260402195507538.png)
+```text
+config/player-fx.ini
+```
 
-3.  歌词是同步的，支持桌面歌词，让你在写代码听音乐的时候也能看到歌词。精简模式下可方便切换歌曲，播放暂停歌曲和调出or隐藏桌面歌词
+## 11. 后端接口概览
 
-![image-20260402195616248](README.assets/image-20260402195616248.png)
+这部分只列主入口，便于开发和联调时快速定位。
 
-4. 新功能：
-   拖拽：比如你喜欢歌单封面，你可以选择右键弹出菜单复制链接或者直接拖拽图片出来，鼠标松开即可将图片保存到本地。
-   
-   ![image-20260402195739321](README.assets/image-20260402195739321.png)
+### 11.1 系统接口
 
-   拖拽音乐或者lrc文件将其批量复制到本地音乐文件夹，鼠标必须移动到在红框内才会生效。
+1. `GET /api/system/summary`  
+   返回应用名、工作目录、存储目录、数据库文件路径、启动时间。
 
-![image-20260402195817202](README.assets/image-20260402195817202.png)
+### 11.2 在线曲库管理接口
 
-![image-20260402195855296](README.assets/image-20260402195855296.png)
+1. `GET /api/online/library/tracks`  
+   返回当前在线曲库歌曲列表。
 
-![image-20260402195916234](README.assets/image-20260402195916234.png)
+2. `POST /api/online/library/refresh`  
+   重新扫描在线曲库目录，并同步数据库。
 
-5. 其他
+3. `POST /api/online/library/import`  
+   通过表单文件上传的方式导入音频或歌词文件。
 
-![image-20260402200030312](README.assets/image-20260402200030312.png)
+### 11.3 媒体访问接口
 
-![image-20260402195940649](README.assets/image-20260402195940649.png)
+1. `GET /api/files/audio/{songId}`  
+   返回歌曲音频流，供桌面端直接播放。
 
-## 在线模块说明
+2. `GET /api/files/covers/song/{songId}`  
+   返回歌曲封面二进制内容。
 
-当前在线模块是后端管理的本地在线曲库：
+### 11.4 兼容接口
 
-- 后端扫描 `./runtime/online/...`
-- 元数据同步到 SQLite
-- JavaFX 通过后端接口获取歌单、搜索结果、歌词和播放地址
+兼容接口位于：
+
+```text
+/api/compat/netease
+```
+
+当前已实现的入口包括：
+
+1. `GET /personalized`
+2. `GET /playlist/detail`
+3. `GET /search/get/web`
+4. `GET /song/lyric`
+5. `GET /song/enhance/player/url`
+
+这组接口的作用，是让桌面端继续沿用一部分旧的调用习惯，同时由当前 Spring Boot 后端提供真实数据。
+
+## 12. 使用说明
+
+### 12.1 本地音乐
+
+1. 将音频文件放到 `LocalMusic/Music`
+2. 将歌词文件放到 `LocalMusic/Lrc`
+3. 在客户端中进入本地音乐区域
+4. 重新加载后即可看到本地曲目
+
+### 12.2 在线曲库
+
+1. 后端会从 `runtime/online` 目录读取音频、歌词和封面资源
+2. 通过刷新接口或界面动作触发同步
+3. 客户端通过后端接口读取歌单、歌曲、歌词和播放地址
+
+### 12.3 下载与拖拽
+
+1. 在线歌曲可以下载到本地目录
+2. 歌单封面支持拖拽导出
+3. 音频和 `.lrc` 文件支持拖拽导入
+
+## 13. 常见问题
+
+### 13.1 后端能启动，客户端连不上
+
+建议按下面的顺序检查：
+
+1. 确认后端已启动
+2. 确认 `config/player-fx.ini` 中的 `server.base-url` 地址可访问
+3. 确认端口 `18080` 没有被别的服务占用
+4. 直接访问 `http://127.0.0.1:18080/api/system/summary` 看是否有响应
+
+### 13.2 桌面端打包失败
+
+优先检查：
+
+1. 当前 JDK 是否包含 `jpackage`
+2. `JAVA_HOME` 是否指向正确版本
+3. 是否先完成了 Maven 构建
+
+### 13.3 本地歌曲或歌词没有显示
+
+优先检查：
+
+1. 文件是否放在默认目录
+2. 文件扩展名是否正确
+3. 目录中是否存在无法读取的文件
+
+### 13.4 在线曲库内容没有刷新
+
+优先检查：
+
+1. `runtime/online` 下是否已有文件
+2. 是否执行了刷新动作或刷新接口
+3. 后端日志中是否有导入或扫描异常
+
+## 14. 开发说明
+
+### 14.1 推荐开发流程
+
+1. 在根目录执行 Maven 命令
+2. 先启动后端，再启动桌面端
+3. 修改后端接口时，优先确认桌面端对应调用点
+4. 修改桌面端远程逻辑时，优先检查 `player-fx/remote`
+
+### 14.2 联调关注点
+
+1. 后端在线曲库接口与兼容接口都在用
+2. 媒体流接口直接影响桌面端播放
+3. 目录约定对扫描、导入、播放、下载都有影响
+
+### 14.3 后续扩展建议
+
+如果后续继续演进这个项目，优先级较高的方向一般包括：
+
+1. 补充更完整的接口文档
+2. 增加自动化测试
+3. 抽离更清晰的播放状态管理
+4. 增加数据库切换说明和迁移脚本
+5. 完善客户端配置项说明
